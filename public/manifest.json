@@ -1,0 +1,29 @@
+{
+  "name": "Serra do Félix - Material de Construção",
+  "short_name": "Serra do Félix",
+  "description": "Sistema de gestão para depósito de materiais de construção",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo-serra-felix.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-serra-felix.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "screenshots": [],
+  "scope": "/",
+  "lang": "pt-BR",
+  "dir": "ltr"
+}

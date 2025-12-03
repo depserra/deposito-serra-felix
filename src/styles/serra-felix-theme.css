@@ -1,0 +1,73 @@
+/* Variáveis CSS para a identidade visual da Serra do Félix */
+:root {
+  /* Cores principais da Serra do Félix */
+  --sf-orange-50: #fff7ed;
+  --sf-orange-100: #ffedd5;
+  --sf-orange-200: #fed7aa;
+  --sf-orange-300: #fdba74;
+  --sf-orange-400: #fb923c;
+  --sf-orange-500: #f97316;
+  --sf-orange-600: #ea580c;
+  --sf-orange-700: #c2410c;
+  --sf-orange-800: #9a3412;
+  --sf-orange-900: #7c2d12;
+  
+  /* Tons de cinza da Serra do Félix */
+  --sf-gray-50: #f8fafc;
+  --sf-gray-100: #f1f5f9;
+  --sf-gray-200: #e2e8f0;
+  --sf-gray-300: #cbd5e1;
+  --sf-gray-400: #94a3b8;
+  --sf-gray-500: #64748b;
+  --sf-gray-600: #475569;
+  --sf-gray-700: #334155;
+  --sf-gray-800: #1e293b;
+  --sf-gray-900: #0f172a;
+}
+
+/* Classes utilitárias personalizadas */
+.sf-primary {
+  background-color: var(--sf-orange-500);
+  color: white;
+}
+
+.sf-primary:hover {
+  background-color: var(--sf-orange-600);
+}
+
+.sf-primary-light {
+  background-color: var(--sf-orange-50);
+  color: var(--sf-orange-700);
+}
+
+.sf-secondary {
+  background-color: var(--sf-gray-500);
+  color: white;
+}
+
+.sf-text-primary {
+  color: var(--sf-orange-500);
+}
+
+.sf-text-secondary {
+  color: var(--sf-gray-600);
+}
+
+/* Estilo para o logo temporário */
+.sf-logo-gradient {
+  background: linear-gradient(135deg, var(--sf-orange-500) 0%, var(--sf-orange-600) 100%);
+}
+
+/* Animações suaves */
+.sf-transition {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sombras personalizadas */
+.sf-shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.sf-shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}

@@ -1,0 +1,22 @@
+// Copie estas regras para o Firebase Console > Firestore Database > Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Regras para a coleção de clientes
+    match /clientes/{clienteId} {
+      allow read: if true;   // Qualquer usuário pode ler
+      allow create: if true; // Qualquer usuário pode criar
+      allow update: if true; // Qualquer usuário pode atualizar
+      allow delete: if true; // Qualquer usuário pode deletar
+    }
+    
+    // Regras para a coleção de vendas
+    match /vendas/{vendaId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+    }
+  }
+}
