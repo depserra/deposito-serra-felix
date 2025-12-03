@@ -437,13 +437,13 @@ export default function ClientesPage() {
           footer={
             <>
               <button
-                className="btn btn-outline"
+                className="px-4 py-2 text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg font-medium transition-all duration-200"
                 onClick={() => setClienteParaExcluir(null)}
               >
                 Cancelar
               </button>
               <button
-                className="btn bg-red-600 text-white hover:bg-red-700"
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-all duration-200"
                 onClick={handleExcluir}
               >
                 Excluir
@@ -451,12 +451,21 @@ export default function ClientesPage() {
             </>
           }
         >
-          <p>
-            Tem certeza que deseja excluir o cliente{' '}
-            <strong>{clienteParaExcluir?.nome}</strong>?
-            <br />
-            Esta ação não pode ser desfeita.
-          </p>
+          <div className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <Trash2 className="text-red-500" size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                  Excluir cliente {clienteParaExcluir?.nome}
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.
+                </p>
+              </div>
+            </div>
+          </div>
         </Modal>
 
         {/* Modal de histórico de compras */}
