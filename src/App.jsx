@@ -5,7 +5,6 @@ import EstoquePage from './pages/estoque';
 import ComprasPage from './pages/compras';
 import FinanceiroPage from './pages/financeiro';
 import RelatoriosPage from './pages/relatorios';
-import ConfiguracoesPage from './pages/configuracoes';
 
 export default function App() {
   return (
@@ -17,7 +16,6 @@ export default function App() {
       <Route path="/compras" element={<ComprasPage />} />
       <Route path="/financeiro" element={<FinanceiroPage />} />
       <Route path="/relatorios" element={<RelatoriosPage />} />
-      <Route path="/configuracoes" element={<ConfiguracoesPage />} />
     </Routes>
   );
 }

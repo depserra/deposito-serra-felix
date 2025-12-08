@@ -14,7 +14,8 @@ const compraSchema = z.object({
       nomeProduto: z.string().min(1, 'Nome do produto é obrigatório'),
       categoria: z.string().optional(),
       quantidade: z.string().min(1, 'Quantidade é obrigatória'),
-      valorUnitario: z.string().min(1, 'Valor unitário é obrigatório')
+      valorCompra: z.string().min(1, 'Valor de compra é obrigatório'),
+      valorVenda: z.string().min(1, 'Valor de venda é obrigatório')
     })
   ).min(1, 'Adicione pelo menos um item'),
   formaPagamento: z.string().optional(),
@@ -25,6 +26,7 @@ export default function CompraForm({ onSubmit, initialData }) {
   const [valorTotal, setValorTotal] = useState(0);
   const [produtoSugestoes, setProdutoSugestoes] = useState({});
   const [inputFocado, setInputFocado] = useState(null);
+  const [formInitialized, setFormInitialized] = useState(false);
   const dropdownRefs = useRef({});
   const { produtos, listarProdutos } = useEstoque();
 
@@ -38,13 +40,14 @@ export default function CompraForm({ onSubmit, initialData }) {
     control,
     watch,
     setValue,
+    reset,
     formState: { errors, isSubmitting }
   } = useForm({
     resolver: zodResolver(compraSchema),
-    defaultValues: initialData || {
+    defaultValues: {
       fornecedor: '',
       dataCompra: new Date().toISOString().split('T')[0],
-      itens: [{ nomeProduto: '', categoria: '', quantidade: '', valorUnitario: '' }],
+      itens: [{ nomeProduto: '', categoria: '', quantidade: '', valorCompra: '', valorVenda: '' }],
       formaPagamento: '',
       observacoes: ''
     }
@@ -58,13 +61,43 @@ export default function CompraForm({ onSubmit, initialData }) {
   // Observar TODOS os campos do formulário para atualização em tempo real
   const watchedValues = watch();
 
+  // Inicializar formulário com initialData (apenas uma vez)
+  useEffect(() => {
+    if (formInitialized) return;
+
+    if (initialData) {
+      const itensFormatados = (initialData.itens || []).map(item => ({
+        nomeProduto: item.nomeProduto || '',
+        categoria: item.categoria || '',
+        quantidade: item.quantidade?.toString() || '',
+        valorCompra: item.valorCompra?.toString() || item.valorUnitario?.toString() || '',
+        valorVenda: item.valorVenda?.toString() || ''
+      }));
+
+      reset({
+        fornecedor: initialData.fornecedor || '',
+        dataCompra: initialData.dataCompra ? 
+          (typeof initialData.dataCompra === 'string' ? initialData.dataCompra.split('T')[0] : 
+           initialData.dataCompra.toDate ? new Date(initialData.dataCompra.toDate()).toISOString().split('T')[0] :
+           new Date(initialData.dataCompra).toISOString().split('T')[0]) :
+          new Date().toISOString().split('T')[0],
+        itens: itensFormatados.length > 0 ? itensFormatados : [{ nomeProduto: '', categoria: '', quantidade: '', valorCompra: '', valorVenda: '' }],
+        formaPagamento: initialData.formaPagamento || '',
+        observacoes: initialData.observacoes || ''
+      });
+      setFormInitialized(true);
+    } else {
+      setFormInitialized(true);
+    }
+  }, [initialData, reset, formInitialized]);
+
   // Recalcular total sempre que qualquer valor mudar
   useEffect(() => {
     if (watchedValues.itens && Array.isArray(watchedValues.itens)) {
       const total = watchedValues.itens.reduce((acc, item) => {
         const quantidade = parseFloat(item.quantidade) || 0;
-        const valorUnitario = parseFloat(item.valorUnitario) || 0;
-        return acc + (quantidade * valorUnitario);
+        const valorCompra = parseFloat(item.valorCompra) || 0;
+        return acc + (quantidade * valorCompra);
       }, 0);
       setValorTotal(total);
     }
@@ -89,7 +122,8 @@ export default function CompraForm({ onSubmit, initialData }) {
   const selecionarProduto = (index, produto) => {
     setValue(`itens.${index}.nomeProduto`, produto.nome);
     setValue(`itens.${index}.categoria`, produto.categoria || '');
-    setValue(`itens.${index}.valorUnitario`, produto.precoCompra || produto.valorUnitario || '');
+    setValue(`itens.${index}.valorCompra`, produto.precoCompra || produto.valorCompra || '');
+    setValue(`itens.${index}.valorVenda`, produto.precoVenda || produto.valorVenda || '');
     setProdutoSugestoes(prev => ({ ...prev, [index]: [] }));
     setInputFocado(null);
   };
@@ -119,7 +153,8 @@ export default function CompraForm({ onSubmit, initialData }) {
       itens: data.itens.map(item => ({
         ...item,
         quantidade: parseFloat(item.quantidade),
-        valorUnitario: parseFloat(item.valorUnitario)
+        valorCompra: parseFloat(item.valorCompra),
+        valorVenda: parseFloat(item.valorVenda)
       }))
     };
     await onSubmit(dadosProcessados);
@@ -167,7 +202,7 @@ export default function CompraForm({ onSubmit, initialData }) {
           </h3>
           <button
             type="button"
-            onClick={() => append({ nomeProduto: '', categoria: '', quantidade: '', valorUnitario: '' })}
+            onClick={() => append({ nomeProduto: '', categoria: '', quantidade: '', valorCompra: '', valorVenda: '' })}
             className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
           >
             <Plus size={16} />
@@ -178,8 +213,8 @@ export default function CompraForm({ onSubmit, initialData }) {
         <div className="space-y-4">
           {fields.map((field, index) => (
             <div key={field.id} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                <div className="md:col-span-4 relative">
+              <div className="grid grid-cols-1 md:grid-cols-14 gap-4">
+                <div className="md:col-span-3 relative">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Nome do Produto *
                   </label>
@@ -268,19 +303,35 @@ export default function CompraForm({ onSubmit, initialData }) {
                   )}
                 </div>
 
-                <div className="md:col-span-3">
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Valor Unitário *
+                    Valor de Compra *
                   </label>
                   <input
                     type="number"
                     step="0.01"
-                    {...register(`itens.${index}.valorUnitario`)}
+                    {...register(`itens.${index}.valorCompra`)}
                     className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="0.00"
                   />
-                  {errors.itens?.[index]?.valorUnitario && (
-                    <p className="mt-1 text-sm text-red-600">{errors.itens[index].valorUnitario.message}</p>
+                  {errors.itens?.[index]?.valorCompra && (
+                    <p className="mt-1 text-sm text-red-600">{errors.itens[index].valorCompra.message}</p>
+                  )}
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Valor de Venda *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    {...register(`itens.${index}.valorVenda`)}
+                    className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="0.00"
+                  />
+                  {errors.itens?.[index]?.valorVenda && (
+                    <p className="mt-1 text-sm text-red-600">{errors.itens[index].valorVenda.message}</p>
                   )}
                 </div>
 

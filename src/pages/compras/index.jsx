@@ -376,7 +376,8 @@ export default function ComprasPage() {
                         <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Produto</th>
                         <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Categoria</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Quantidade</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Valor Unitário</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Valor de Compra</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Valor de Venda</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Subtotal</th>
                       </tr>
                     </thead>
@@ -386,16 +387,17 @@ export default function ComprasPage() {
                           <td className="py-3 px-4 text-slate-900 dark:text-white">{item.nomeProduto}</td>
                           <td className="py-3 px-4 text-slate-600 dark:text-slate-400">{item.categoria || '-'}</td>
                           <td className="py-3 px-4 text-right text-slate-900 dark:text-white">{item.quantidade}</td>
-                          <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {item.valorUnitario?.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {(item.valorCompra || item.valorUnitario)?.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {item.valorVenda?.toFixed(2)}</td>
                           <td className="py-3 px-4 text-right font-medium text-slate-900 dark:text-white">
-                            R$ {(item.quantidade * item.valorUnitario).toFixed(2)}
+                            R$ {(item.quantidade * (item.valorCompra || item.valorUnitario)).toFixed(2)}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="border-t-2 border-slate-200 dark:border-slate-700">
                       <tr>
-                        <td colSpan="4" className="py-3 px-4 text-right font-semibold text-slate-900 dark:text-white">Valor Total:</td>
+                        <td colSpan="5" className="py-3 px-4 text-right font-semibold text-slate-900 dark:text-white">Valor Total:</td>
                         <td className="py-3 px-4 text-right font-bold text-lg text-red-600 dark:text-red-400">
                           R$ {compraDetalhes.valorTotal?.toFixed(2)}
                         </td>

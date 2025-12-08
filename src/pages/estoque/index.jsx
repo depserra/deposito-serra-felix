@@ -123,7 +123,29 @@ export default function Estoque() {
             <Plus size={20} />
             Novo Produto
           </button>
-        </div>        {/* Cards de Estatísticas */}
+        </div>
+
+        {/* Formulário */}
+        {mostrarFormulario && (
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-2 h-8 bg-orange-500 rounded-full"></div>
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                {produtoParaEditar ? 'Editar Produto' : 'Novo Produto'}
+              </h2>
+            </div>
+            <ProdutoForm
+              onSubmit={handleSubmit}
+              initialData={produtoParaEditar}
+              onCancel={() => {
+                setMostrarFormulario(false);
+                setProdutoParaEditar(null);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Cards de Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
@@ -175,26 +197,6 @@ export default function Estoque() {
             </div>
           </div>
         </div>
-
-        {/* Formulário */}
-        {mostrarFormulario && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-2 h-8 bg-orange-500 rounded-full"></div>
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                {produtoParaEditar ? 'Editar Produto' : 'Novo Produto'}
-              </h2>
-            </div>
-            <ProdutoForm
-              onSubmit={handleSubmit}
-              initialData={produtoParaEditar}
-              onCancel={() => {
-                setMostrarFormulario(false);
-                setProdutoParaEditar(null);
-              }}
-            />
-          </div>
-        )}
 
         {/* Busca e Filtros */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 p-6">

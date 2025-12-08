@@ -124,7 +124,7 @@ export default function VendasPage() {
 
   const formatarStatus = (status) => {
     const statusMap = {
-      'em_andamento': 'Em Andamento',
+      'em_andamento': 'Fiado',
       'concluida': 'Concluída',
       'cancelada': 'Cancelada'
     };
@@ -196,8 +196,8 @@ export default function VendasPage() {
                   value={statusFiltro}
                   onChange={(e) => setStatusFiltro(e.target.value)}
                 >
-                  <option value="">Todos os status</option>
-                  <option value="em_andamento">Em Andamento</option>
+                <option value="">Todos os Status</option>
+                  <option value="fiado">Fiado</option>
                   <option value="concluida">Concluída</option>
                   <option value="cancelada">Cancelada</option>
                 </select>
