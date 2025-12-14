@@ -1,6 +1,7 @@
 // Service Worker para cache offline e melhor performance
-const CACHE_NAME = 'serra-felix-v1';
-const RUNTIME_CACHE = 'serra-felix-runtime';
+const CACHE_VERSION = Date.now();
+const CACHE_NAME = `serra-felix-v${CACHE_VERSION}`;
+const RUNTIME_CACHE = `serra-felix-runtime-v${CACHE_VERSION}`;
 
 // Arquivos essenciais para cache
 const PRECACHE_URLS = [
@@ -27,9 +28,20 @@ self.addEventListener('activate', (event) => {
       return cacheNames.filter((cacheName) => !currentCaches.includes(cacheName));
     }).then((cachesToDelete) => {
       return Promise.all(cachesToDelete.map((cacheToDelete) => {
+        console.log('🗑️ Limpando cache antigo:', cacheToDelete);
         return caches.delete(cacheToDelete);
       }));
-    }).then(() => self.clients.claim())
+    }).then(() => {
+      console.log('✅ Service Worker ativado e caches limpos');
+      return self.clients.claim();
+    }).then(() => {
+      // Notifica todos os clientes sobre a atualização
+      return self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: 'SW_UPDATED' });
+        });
+      });
+    })
   );
 });
 
@@ -43,6 +55,14 @@ self.addEventListener('fetch', (event) => {
   // Ignora requisições do Firebase (sempre busca da rede)
   if (event.request.url.includes('firebaseio.com') || 
       event.request.url.includes('googleapis.com')) {
+    return;
+  }
+
+  // Nunca faz cache de HTML - sempre busca versão mais recente
+  if (event.request.url.endsWith('.html') || event.request.url === self.location.origin + '/') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
     return;
   }
 

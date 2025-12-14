@@ -468,6 +468,14 @@ export default function VendasPage() {
                     {formatarStatus(vendaDetalhes.status)}
                   </span>
                 </div>
+                {vendaDetalhes.formaPagamento && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Forma de Pagamento</label>
+                    <p className="text-lg font-medium text-slate-900 dark:text-white capitalize">
+                      {vendaDetalhes.formaPagamento.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Itens da venda */}

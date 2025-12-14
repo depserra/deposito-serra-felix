@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import App from './App';
 import './styles/globals.css';
+import { registerServiceWorker } from './utils/serviceWorkerRegistration';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -14,3 +15,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </React.StrictMode>,
 )
+
+// Registra o Service Worker para atualizações automáticas
+registerServiceWorker();

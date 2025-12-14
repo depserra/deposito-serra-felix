@@ -36,6 +36,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
       dataVenda: new Date().toISOString().split('T')[0],
       itens: [{ produto: '', quantidade: '', valorUnitario: '' }],
       status: 'em_andamento',
+      formaPagamento: 'dinheiro',
       observacoes: ''
     }
   });
@@ -61,6 +62,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
           new Date().toISOString().split('T')[0],
         itens: itensFormatados.length > 0 ? itensFormatados : [{ produto: '', quantidade: '', valorUnitario: '' }],
         status: initialData.status || 'em_andamento',
+        formaPagamento: initialData.formaPagamento || 'dinheiro',
         observacoes: initialData.observacoes || ''
       });
       setFormInitialized(true);
@@ -70,6 +72,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
         dataVenda: new Date().toISOString().split('T')[0],
         itens: [{ produto: '', quantidade: '', valorUnitario: '' }],
         status: 'em_andamento',
+        formaPagamento: 'dinheiro',
         observacoes: ''
       });
       setFormInitialized(true);
@@ -400,8 +403,8 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
           </div>
         </div>
 
-        {/* Status e Observações */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-200 dark:border-slate-700 pt-6">
+        {/* Status, Forma de Pagamento e Valor Total */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-slate-200 dark:border-slate-700 pt-6">
           {/* Status */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -417,6 +420,27 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
             </select>
             {errors.status && (
               <p className="mt-1 text-sm text-red-600">{errors.status.message}</p>
+            )}
+          </div>
+
+          {/* Forma de Pagamento */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Forma de Pagamento
+            </label>
+            <select
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
+              {...register('formaPagamento')}
+            >
+              <option value="dinheiro">Dinheiro</option>
+              <option value="pix">PIX</option>
+              <option value="cartao_debito">Cartão de Débito</option>
+              <option value="cartao_credito">Cartão de Crédito</option>
+              <option value="transferencia">Transferência</option>
+              <option value="fiado">Fiado</option>
+            </select>
+            {errors.formaPagamento && (
+              <p className="mt-1 text-sm text-red-600">{errors.formaPagamento.message}</p>
             )}
           </div>
 

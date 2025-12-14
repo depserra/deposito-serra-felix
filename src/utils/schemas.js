@@ -14,6 +14,9 @@ export const vendaSchema = z.object({
   status: z.enum(['concluida', 'em_andamento', 'cancelada'], {
     required_error: 'Status é obrigatório'
   }),
+  formaPagamento: z.enum(['dinheiro', 'pix', 'cartao_debito', 'cartao_credito', 'transferencia', 'fiado'], {
+    required_error: 'Forma de pagamento é obrigatória'
+  }).optional(),
   observacoes: z.string().max(500, 'Observações devem ter no máximo 500 caracteres').optional()
 });
 
