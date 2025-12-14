@@ -253,9 +253,9 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Cliente *
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-stretch">
               <select
-                className="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
+                className="flex-1 min-w-0 px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
                 {...register('clienteId')}
                 value={clienteIdAtual || ''}
               >
@@ -269,7 +269,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
               <button
                 type="button"
                 onClick={() => setShowClienteModal(true)}
-                className="flex items-center justify-center shrink-0 w-12 h-12 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-colors"
+                className="flex items-center justify-center flex-shrink-0 w-12 px-0 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-colors"
                 title="Cadastrar novo cliente"
               >
                 <UserPlus size={20} />
