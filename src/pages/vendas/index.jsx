@@ -197,7 +197,7 @@ export default function VendasPage() {
                   onChange={(e) => setStatusFiltro(e.target.value)}
                 >
                 <option value="">Todos os Status</option>
-                  <option value="fiado">Fiado</option>
+                  <option value="fido">Fiado</option>
                   <option value="concluida">Concluída</option>
                   <option value="cancelada">Cancelada</option>
                 </select>
