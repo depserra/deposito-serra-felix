@@ -269,10 +269,10 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
               <button
                 type="button"
                 onClick={() => setShowClienteModal(true)}
-                className="flex items-center gap-2 px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-medium transition-colors"
+                className="flex items-center justify-center shrink-0 w-12 h-12 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-colors"
                 title="Cadastrar novo cliente"
               >
-                <UserPlus size={18} />
+                <UserPlus size={20} />
               </button>
             </div>
             {errors.clienteId && (
