@@ -52,9 +52,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Ignora requisições de extensões do navegador e esquemas não suportados
+  const url = event.request.url;
+  if (url.startsWith('chrome-extension://') || 
+      url.startsWith('moz-extension://') ||
+      url.startsWith('safari-extension://')) {
+    return;
+  }
+
   // Ignora requisições do Firebase (sempre busca da rede)
-  if (event.request.url.includes('firebaseio.com') || 
-      event.request.url.includes('googleapis.com')) {
+  if (url.includes('firebaseio.com') || 
+      url.includes('googleapis.com') ||
+      url.includes('googlesyndication.com')) {
     return;
   }
 
