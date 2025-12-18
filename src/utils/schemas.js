@@ -11,6 +11,7 @@ export const vendaSchema = z.object({
     valorUnitario: z.number().min(0, 'Valor deve ser maior ou igual a 0'),
   })).min(1, 'Adicione pelo menos um item'),
   valorTotal: z.number().min(0, 'Valor total deve ser maior ou igual a 0').optional(),
+  desconto: z.number().min(0, 'Desconto deve ser maior ou igual a 0').optional(),
   status: z.enum(['concluida', 'em_andamento', 'cancelada'], {
     required_error: 'Status é obrigatório'
   }),

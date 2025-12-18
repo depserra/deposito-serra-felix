@@ -235,7 +235,7 @@ export default function ComprasPage() {
                         </td>
                         <td className="px-6 py-4">
                           <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            R$ {(compra.valorTotal || 0).toFixed(2)}
+                            R$ {formatCurrency(compra.valorTotal || 0)}
                           </span>
                         </td>
                         <td className="px-6 py-4">
@@ -326,7 +326,7 @@ export default function ComprasPage() {
                         <span>{compra.itens?.length || 0} produto(s)</span>
                       </div>
                       <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                        R$ {(compra.valorTotal || 0).toFixed(2)}
+                        R$ {formatCurrency(compra.valorTotal || 0)}
                       </p>
                     </div>
                   </div>
@@ -387,10 +387,10 @@ export default function ComprasPage() {
                           <td className="py-3 px-4 text-slate-900 dark:text-white">{item.nomeProduto}</td>
                           <td className="py-3 px-4 text-slate-600 dark:text-slate-400">{item.categoria || '-'}</td>
                           <td className="py-3 px-4 text-right text-slate-900 dark:text-white">{item.quantidade}</td>
-                          <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {(item.valorCompra || item.valorUnitario)?.toFixed(2)}</td>
-                          <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {item.valorVenda?.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {formatCurrency(item.valorCompra || item.valorUnitario)}</td>
+                          <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {formatCurrency(item.valorVenda)}</td>
                           <td className="py-3 px-4 text-right font-medium text-slate-900 dark:text-white">
-                            R$ {(item.quantidade * (item.valorCompra || item.valorUnitario)).toFixed(2)}
+                            R$ {formatCurrency(item.quantidade * (item.valorCompra || item.valorUnitario))}
                           </td>
                         </tr>
                       ))}
@@ -399,7 +399,7 @@ export default function ComprasPage() {
                       <tr>
                         <td colSpan="5" className="py-3 px-4 text-right font-semibold text-slate-900 dark:text-white">Valor Total:</td>
                         <td className="py-3 px-4 text-right font-bold text-lg text-red-600 dark:text-red-400">
-                          R$ {compraDetalhes.valorTotal?.toFixed(2)}
+                          R$ {formatCurrency(compraDetalhes.valorTotal)}
                         </td>
                       </tr>
                     </tfoot>

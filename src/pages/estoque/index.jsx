@@ -5,6 +5,7 @@ import ProdutoForm from '../../components/forms/ProdutoForm';
 import PageLayout from '../../components/layout-new/PageLayout';
 import Modal from '../../components/modals/Modal';
 import { LoadingSpinner, ProdutosSkeleton } from '../../components/ui/LoadingComponents';
+import { formatCurrency } from '../../utils/formatters';
 
 export default function Estoque() {
   const { produtos, carregando, erro, adicionarProduto, atualizarProduto, deletarProduto, listarProdutos } = useEstoque();
@@ -326,10 +327,10 @@ export default function Estoque() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-slate-900 dark:text-slate-100">
-                          R$ {(produto.precoVenda || 0).toFixed(2)}
+                          R$ {formatCurrency(produto.precoVenda || 0)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap font-semibold text-slate-900 dark:text-slate-100">
-                          R$ {((produto.quantidade || 0) * (produto.precoVenda || 0)).toFixed(2)}
+                          R$ {formatCurrency((produto.quantidade || 0) * (produto.precoVenda || 0))}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <div className="flex justify-end gap-2">
@@ -436,19 +437,19 @@ export default function Estoque() {
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Preço de Compra</label>
                     <p className="text-xl font-semibold text-red-600 dark:text-red-400">
-                      R$ {(produtoDetalhes.precoCompra || 0).toFixed(2)}
+                      R$ {formatCurrency(produtoDetalhes.precoCompra || 0)}
                     </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Preço de Venda</label>
                     <p className="text-xl font-semibold text-green-600 dark:text-green-400">
-                      R$ {(produtoDetalhes.precoVenda || 0).toFixed(2)}
+                      R$ {formatCurrency(produtoDetalhes.precoVenda || 0)}
                     </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Valor Total em Estoque</label>
                     <p className="text-xl font-semibold text-blue-600 dark:text-blue-400">
-                      R$ {((produtoDetalhes.quantidade || 0) * (produtoDetalhes.precoVenda || 0)).toFixed(2)}
+                      R$ {formatCurrency((produtoDetalhes.quantidade || 0) * (produtoDetalhes.precoVenda || 0))}
                     </p>
                   </div>
                 </div>

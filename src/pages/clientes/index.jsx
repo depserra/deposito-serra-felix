@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useClientes } from '../../hooks/useClientes';
 import { useEstoque } from '../../hooks/useEstoque';
 import PageLayout from '../../components/layout-new/PageLayout';
@@ -26,6 +27,7 @@ function useDebounce(value, delay) {
 }
 
 export default function ClientesPage() {
+  const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [clienteParaEditar, setClienteParaEditar] = useState(null);
@@ -496,7 +498,10 @@ export default function ClientesPage() {
                     {historicoCompras.map((venda) => (
                       <div
                         key={venda.id}
-                        className="border border-gray-200 dark:border-gray-700 rounded p-3 space-y-2"
+                        onClick={() => {
+                          navigate('/vendas', { state: { vendaId: venda.id } });
+                        }}
+                        className="border border-gray-200 dark:border-gray-700 rounded p-3 space-y-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                         >
                           <div className="flex justify-between text-sm">
                             <span className="font-medium">

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useVendas } from '../../hooks/useVendas';
 import { useClientes } from '../../hooks/useClientes';
 import { useEstoque } from '../../hooks/useEstoque';
@@ -7,6 +8,7 @@ import VendaForm from '../../components/forms/VendaForm';
 import Modal from '../../components/modals/Modal';
 import { Plus, Search, Edit, Trash2, FileText, CheckCircle, Clock, XCircle, Filter, Users, Eye } from 'lucide-react';
 import { VendasSkeleton, LoadingSpinner, EmptyState } from '../../components/ui/LoadingComponents';
+import { formatCurrency } from '../../utils/formatters';
 
 // Hook para debounce
 function useDebounce(value, delay) {
@@ -26,6 +28,8 @@ function useDebounce(value, delay) {
 }
 
 export default function VendasPage() {
+  const location = useLocation();
+  const modalAbertoPorNavegacao = useRef(false);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFiltro, setStatusFiltro] = useState('');
@@ -69,6 +73,20 @@ export default function VendasPage() {
     }
   }, [debouncedSearchTerm, statusFiltro, carregamentoInicial]);
 
+  // Abrir modal de detalhes automaticamente quando receber vendaId via navegação
+  useEffect(() => {
+    if (location.state?.vendaId && vendas.length > 0 && !carregamentoInicial && !modalAbertoPorNavegacao.current) {
+      const venda = vendas.find(v => v.id === location.state.vendaId);
+      if (venda) {
+        setVendaDetalhes(venda);
+        setShowDetalhes(true);
+        modalAbertoPorNavegacao.current = true;
+        // Limpar o state para não reabrir se o usuário voltar
+        window.history.replaceState({}, document.title);
+      }
+    }
+  }, [location.state, vendas, carregamentoInicial]);
+
   const handleSubmit = useCallback(async (data) => {
     try {
       if (data === null) {
@@ -82,7 +100,7 @@ export default function VendasPage() {
         valorTotal: Number(data.valorTotal || 0),
         itens: data.itens.map(item => ({
           ...item,
-          quantidade: Number(item.quantidade || 0),
+          quantidade: Math.round(Number(item.quantidade || 0)),
           valorUnitario: Number(item.valorUnitario || 0)
         }))
       };
@@ -197,7 +215,7 @@ export default function VendasPage() {
                   onChange={(e) => setStatusFiltro(e.target.value)}
                 >
                 <option value="">Todos os Status</option>
-                  <option value="fiado">Fiado</option>
+                  <option value="em_andamento">Fiado</option>
                   <option value="concluida">Concluída</option>
                   <option value="cancelada">Cancelada</option>
                 </select>
@@ -329,7 +347,7 @@ export default function VendasPage() {
                         </td>
                         <td className="px-6 py-4">
                           <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            R$ {venda.valorTotal.toFixed(2)}
+                            R$ {formatCurrency(venda.valorTotal)}
                           </span>
                         </td>
                         <td className="px-6 py-4">
@@ -418,7 +436,7 @@ export default function VendasPage() {
 
                     <div className="mb-3">
                       <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">{venda.clienteNome}</p>
-                      <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">R$ {venda.valorTotal.toFixed(2)}</p>
+                      <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">R$ {formatCurrency(venda.valorTotal)}</p>
                     </div>                    <div className="flex items-center">
                       <span className={getStatusBadge(venda.status)}>
                         {getStatusIcon(venda.status)}
@@ -496,18 +514,34 @@ export default function VendasPage() {
                         <tr key={index}>
                           <td className="py-3 px-4 text-slate-900 dark:text-white">{getNomeProduto(item.produto)}</td>
                           <td className="py-3 px-4 text-right text-slate-900 dark:text-white">{item.quantidade}</td>
-                          <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {item.valorUnitario?.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {formatCurrency(item.valorUnitario)}</td>
                           <td className="py-3 px-4 text-right font-medium text-slate-900 dark:text-white">
-                            R$ {(item.quantidade * item.valorUnitario).toFixed(2)}
+                            R$ {formatCurrency(item.quantidade * item.valorUnitario)}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="border-t-2 border-slate-200 dark:border-slate-700">
+                      {vendaDetalhes.desconto > 0 && (
+                        <>
+                          <tr>
+                            <td colSpan="3" className="py-2 px-4 text-right text-slate-700 dark:text-slate-300">Subtotal:</td>
+                            <td className="py-2 px-4 text-right text-slate-900 dark:text-white">
+                              R$ {formatCurrency(vendaDetalhes.valorTotal + (vendaDetalhes.desconto || 0))}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td colSpan="3" className="py-2 px-4 text-right text-slate-700 dark:text-slate-300">Desconto:</td>
+                            <td className="py-2 px-4 text-right text-red-600 dark:text-red-400">
+                              - R$ {formatCurrency(vendaDetalhes.desconto)}
+                            </td>
+                          </tr>
+                        </>
+                      )}
                       <tr>
                         <td colSpan="3" className="py-3 px-4 text-right font-semibold text-slate-900 dark:text-white">Valor Total:</td>
                         <td className="py-3 px-4 text-right font-bold text-lg text-green-600 dark:text-green-400">
-                          R$ {vendaDetalhes.valorTotal?.toFixed(2)}
+                          R$ {formatCurrency(vendaDetalhes.valorTotal)}
                         </td>
                       </tr>
                     </tfoot>

@@ -37,6 +37,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
       itens: [{ produto: '', quantidade: '', valorUnitario: '' }],
       status: 'em_andamento',
       formaPagamento: 'dinheiro',
+      desconto: 0,
       observacoes: ''
     }
   });
@@ -49,7 +50,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
     if (initialData && (!initialData.itens || initialData.itens.length === 0 || produtos.length > 0)) {
       const itensFormatados = (initialData.itens || []).map(item => ({
         produto: item.produto || item.produtoId || item.id || '',
-        quantidade: item.quantidade || '',
+        quantidade: item.quantidade ? Math.round(Number(item.quantidade)) : '',
         valorUnitario: item.valorUnitario || item.preco || ''
       }));
 
@@ -63,6 +64,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
         itens: itensFormatados.length > 0 ? itensFormatados : [{ produto: '', quantidade: '', valorUnitario: '' }],
         status: initialData.status || 'em_andamento',
         formaPagamento: initialData.formaPagamento || 'dinheiro',
+        desconto: initialData.desconto || 0,
         observacoes: initialData.observacoes || ''
       });
       setFormInitialized(true);
@@ -73,6 +75,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
         itens: [{ produto: '', quantidade: '', valorUnitario: '' }],
         status: 'em_andamento',
         formaPagamento: 'dinheiro',
+        desconto: 0,
         observacoes: ''
       });
       setFormInitialized(true);
@@ -147,12 +150,14 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
 
   // Calcula o valor total sempre que os itens mudarem
   const itens = watch('itens');
+  const desconto = watch('desconto');
   const calcularTotal = () => {
-    const total = itens.reduce((sum, item) => 
+    const subtotal = Math.round(itens.reduce((sum, item) => 
       sum + (item.quantidade || 0) * (item.valorUnitario || 0)
-    , 0);
+    , 0) * 100) / 100;
+    const total = Math.round((subtotal - (desconto || 0)) * 100) / 100;
     setValue('valorTotal', total);
-    return total;
+    return { subtotal, total };
   };
 
   const handleFormSubmit = async (data) => {
@@ -160,10 +165,16 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
       // Adiciona o nome do cliente aos dados
       const clienteSelecionado = clientes.find(c => c.id === data.clienteId);
       
+      const { total } = calcularTotal();
       const dadosParaEnviar = {
         ...data,
         clienteNome: clienteSelecionado?.nome,
-        valorTotal: calcularTotal()
+        valorTotal: total,
+        desconto: data.desconto || 0,
+        itens: data.itens.map(item => ({
+          ...item,
+          quantidade: Math.round(Number(item.quantidade))
+        }))
       };
       
       await onSubmit(dadosParaEnviar);
@@ -347,7 +358,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
                     <input
                       type="number"
                       min="1"
-                      step="0.01"
+                      step="1"
                       placeholder="0"
                       className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                       {...register(`itens.${index}.quantidade`, {
@@ -366,18 +377,21 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       Valor Unitário *
                     </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      readOnly
-                      {...register(`itens.${index}.valorUnitario`, {
-                        valueAsNumber: true,
-                        onChange: calcularTotal
-                      })}
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">R$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0,00"
+                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        readOnly
+                        {...register(`itens.${index}.valorUnitario`, {
+                          valueAsNumber: true,
+                          onChange: calcularTotal
+                        })}
+                      />
+                    </div>
                     {errors.itens?.[index]?.valorUnitario && (
                       <p className="mt-1 text-sm text-red-600">
                         {errors.itens[index].valorUnitario.message}
@@ -403,56 +417,85 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
           </div>
         </div>
 
-        {/* Status, Forma de Pagamento e Valor Total */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-slate-200 dark:border-slate-700 pt-6">
-          {/* Status */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Status *
-            </label>
-            <select
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
-              {...register('status')}
-            >
-              <option value="em_andamento">Fiado</option>
-              <option value="concluida">Concluída</option>
-              <option value="cancelada">Cancelada</option>
-            </select>
-            {errors.status && (
-              <p className="mt-1 text-sm text-red-600">{errors.status.message}</p>
-            )}
+        {/* Status, Forma de Pagamento, Desconto e Valor Total */}
+        <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Status */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Status *
+              </label>
+              <select
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
+                {...register('status')}
+              >
+                <option value="em_andamento">Fiado</option>
+                <option value="concluida">Concluída</option>
+                <option value="cancelada">Cancelada</option>
+              </select>
+              {errors.status && (
+                <p className="mt-1 text-sm text-red-600">{errors.status.message}</p>
+              )}
+            </div>
+
+            {/* Forma de Pagamento */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Forma de Pagamento
+              </label>
+              <select
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
+                {...register('formaPagamento')}
+              >
+                <option value="dinheiro">Dinheiro</option>
+                <option value="pix">PIX</option>
+                <option value="cartao_debito">Cartão de Débito</option>
+                <option value="cartao_credito">Cartão de Crédito</option>
+                <option value="transferencia">Transferência</option>
+                <option value="fiado">Fiado</option>
+              </select>
+              {errors.formaPagamento && (
+                <p className="mt-1 text-sm text-red-600">{errors.formaPagamento.message}</p>
+              )}
+            </div>
           </div>
 
-          {/* Forma de Pagamento */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Forma de Pagamento
-            </label>
-            <select
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
-              {...register('formaPagamento')}
-            >
-              <option value="dinheiro">Dinheiro</option>
-              <option value="pix">PIX</option>
-              <option value="cartao_debito">Cartão de Débito</option>
-              <option value="cartao_credito">Cartão de Crédito</option>
-              <option value="transferencia">Transferência</option>
-              <option value="fiado">Fiado</option>
-            </select>
-            {errors.formaPagamento && (
-              <p className="mt-1 text-sm text-red-600">{errors.formaPagamento.message}</p>
+          {/* Resumo de Valores */}
+          <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 space-y-3">
+            <div className="flex justify-between items-center text-slate-700 dark:text-slate-300">
+              <span>Subtotal:</span>
+              <span className="font-semibold">R$ {calcularTotal().subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            
+            {/* Campo de Desconto */}
+            <div className="flex justify-between items-center gap-4">
+              <label className="text-slate-700 dark:text-slate-300">Desconto:</label>
+              <div className="relative w-48">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">R$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0,00"
+                  className="w-full pl-10 pr-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  {...register('desconto', {
+                    valueAsNumber: true,
+                    onChange: calcularTotal
+                  })}
+                />
+              </div>
+            </div>
+            {errors.desconto && (
+              <p className="text-sm text-red-600">{errors.desconto.message}</p>
             )}
-          </div>
-
-          {/* Valor Total */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Valor Total
-            </label>
-            <div className="flex items-center h-12 px-4 py-3 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl">
-              <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                R$ {calcularTotal().toFixed(2)}
-              </span>
+            
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">Valor Total:</span>
+                <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                  R$ {calcularTotal().total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
             </div>
           </div>
         </div>

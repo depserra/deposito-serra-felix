@@ -188,13 +188,16 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
             Preço de Compra *
           </label>
-          <input
-            type="number"
-            step="0.01"
-            {...register('precoCompra', { valueAsNumber: true })}
-            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-            placeholder="0.00"
-          />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">R$</span>
+            <input
+              type="number"
+              step="0.01"
+              {...register('precoCompra', { valueAsNumber: true })}
+              className="w-full pl-10 pr-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              placeholder="0,00"
+            />
+          </div>
           {errors.precoCompra && (
             <p className="mt-1 text-sm text-red-500">{errors.precoCompra.message}</p>
           )}
@@ -204,13 +207,16 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
             Preço de Venda *
           </label>
-          <input
-            type="number"
-            step="0.01"
-            {...register('precoVenda', { valueAsNumber: true })}
-            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-            placeholder="0.00"
-          />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">R$</span>
+            <input
+              type="number"
+              step="0.01"
+              {...register('precoVenda', { valueAsNumber: true })}
+              className="w-full pl-10 pr-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              placeholder="0,00"
+            />
+          </div>
           {errors.precoVenda && (
             <p className="mt-1 text-sm text-red-500">{errors.precoVenda.message}</p>
           )}

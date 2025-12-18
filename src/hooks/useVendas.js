@@ -80,6 +80,7 @@ import { db } from '../services/firebase';export function useVendas() {
       const vendaData = {
         ...dados,
         codigoVenda,
+        valorTotal: Math.round((dados.valorTotal || 0) * 100) / 100,
         dataVenda: new Date(dados.dataVenda),
         criadoEm: new Date(),
         atualizadoEm: new Date()
@@ -138,6 +139,7 @@ import { db } from '../services/firebase';export function useVendas() {
       setLoading(true);
       const vendaData = {
         ...dados,
+        valorTotal: Math.round((dados.valorTotal || 0) * 100) / 100,
         dataVenda: new Date(dados.dataVenda),
         atualizadoEm: new Date()
       };
