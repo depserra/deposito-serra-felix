@@ -5,6 +5,7 @@ import CompraForm from '../../components/forms/CompraForm';
 import Modal from '../../components/modals/Modal';
 import { Plus, Search, Edit, Trash2, ShoppingBag, Package, Eye } from 'lucide-react';
 import { LoadingSpinner, EmptyState } from '../../components/ui/LoadingComponents';
+import { formatCurrency } from '../../utils/formatters';
 
 // Hook para debounce
 function useDebounce(value, delay) {
