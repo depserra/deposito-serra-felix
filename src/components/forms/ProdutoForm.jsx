@@ -9,10 +9,22 @@ const produtoSchema = z.object({
   descricao: z.string().optional(),
   categoria: z.string().min(1, 'Categoria é obrigatória'),
   unidade: z.string().min(1, 'Unidade é obrigatória'),
-  quantidade: z.number().min(0, 'Quantidade deve ser maior ou igual a 0'),
-  estoqueMinimo: z.number().min(0, 'Estoque mínimo deve ser maior ou igual a 0'),
-  precoCompra: z.number().min(0, 'Preço de compra deve ser maior ou igual a 0'),
-  precoVenda: z.number().min(0, 'Preço de venda deve ser maior ou igual a 0'),
+  quantidade: z.union([
+    z.string().transform(val => val === '' ? 0 : Number(val)),
+    z.number()
+  ]).pipe(z.number().min(0, 'Quantidade deve ser maior ou igual a 0')),
+  estoqueMinimo: z.union([
+    z.string().transform(val => val === '' ? 0 : Number(val)),
+    z.number()
+  ]).pipe(z.number().min(0, 'Estoque mínimo deve ser maior ou igual a 0')),
+  precoCompra: z.union([
+    z.string().transform(val => val === '' ? 0 : Number(val)),
+    z.number()
+  ]).pipe(z.number().min(0, 'Preço de compra deve ser maior ou igual a 0')),
+  precoVenda: z.union([
+    z.string().transform(val => val === '' ? 0 : Number(val)),
+    z.number()
+  ]).pipe(z.number().min(0, 'Preço de venda deve ser maior ou igual a 0')),
   fornecedor: z.string().optional(),
   localizacao: z.string().optional()
 });
@@ -31,10 +43,10 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
       descricao: '',
       categoria: '',
       unidade: 'un',
-      quantidade: 0,
-      estoqueMinimo: 0,
-      precoCompra: 0,
-      precoVenda: 0,
+      quantidade: '',
+      estoqueMinimo: '',
+      precoCompra: '',
+      precoVenda: '',
       fornecedor: '',
       localizacao: ''
     }
@@ -50,10 +62,10 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
     try {
       const dadosProcessados = {
         ...data,
-        quantidade: parseFloat(data.quantidade) || 0,
-        estoqueMinimo: parseFloat(data.estoqueMinimo) || 0,
-        precoCompra: parseFloat(data.precoCompra) || 0,
-        precoVenda: parseFloat(data.precoVenda) || 0
+        quantidade: Number(data.quantidade) || 0,
+        estoqueMinimo: Number(data.estoqueMinimo) || 0,
+        precoCompra: Number(data.precoCompra) || 0,
+        precoVenda: Number(data.precoVenda) || 0
       };
       await onSubmit(dadosProcessados);
     } catch (error) {
@@ -155,10 +167,9 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
           </label>
           <input
             type="number"
-            step="0.01"
-            {...register('quantidade', { valueAsNumber: true })}
+            {...register('quantidade')}
             className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-            placeholder="0"
+            placeholder=""
           />
           {errors.quantidade && (
             <p className="mt-1 text-sm text-red-500">{errors.quantidade.message}</p>
@@ -171,16 +182,30 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
           </label>
           <input
             type="number"
-            step="0.01"
-            {...register('estoqueMinimo', { valueAsNumber: true })}
+            {...register('estoqueMinimo')}
             className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-            placeholder="0"
+            placeholder=""
           />
           {errors.estoqueMinimo && (
             <p className="mt-1 text-sm text-red-500">{errors.estoqueMinimo.message}</p>
           )}
         </div>
       </div>
+
+      {/* Aviso sobre registro automático de compra */}
+      {!initialData && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex gap-3">
+            <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="text-sm text-blue-700 dark:text-blue-300">
+              <p className="font-medium mb-1">Registro automático de compra</p>
+              <p>Se você informar quantidade e preço de compra, uma compra será registrada automaticamente na seção de compras para controle do estoque inicial.</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Preços */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -192,10 +217,10 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">R$</span>
             <input
               type="number"
-              step="0.01"
-              {...register('precoCompra', { valueAsNumber: true })}
+              step="any"
+              {...register('precoCompra')}
               className="w-full pl-10 pr-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="0,00"
+              placeholder=""
             />
           </div>
           {errors.precoCompra && (
@@ -211,10 +236,10 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">R$</span>
             <input
               type="number"
-              step="0.01"
-              {...register('precoVenda', { valueAsNumber: true })}
+              step="any"
+              {...register('precoVenda')}
               className="w-full pl-10 pr-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="0,00"
+              placeholder=""
             />
           </div>
           {errors.precoVenda && (

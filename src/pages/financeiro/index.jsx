@@ -73,17 +73,24 @@ export default function FinanceiroPage() {
 
   // Calcular estatísticas
   const estatisticas = useMemo(() => {
-    const totalVendas = dadosFiltrados.vendas.reduce((acc, v) => acc + (v.valorTotal || 0), 0);
+    // Separar vendas pagas (concluídas) de vendas fiado (em_andamento)
+    const vendasPagas = dadosFiltrados.vendas.filter(v => v.status === 'concluida');
+    const vendasFiado = dadosFiltrados.vendas.filter(v => v.status === 'em_andamento');
+    
+    const totalVendasPagas = vendasPagas.reduce((acc, v) => acc + (v.valorTotal || 0), 0);
+    const totalVendasFiado = vendasFiado.reduce((acc, v) => acc + (v.valorTotal || 0), 0);
     const totalCompras = dadosFiltrados.compras.reduce((acc, c) => acc + (c.valorTotal || 0), 0);
-    const lucro = totalVendas - totalCompras;
-    const ticketMedio = dadosFiltrados.vendas.length > 0 ? totalVendas / dadosFiltrados.vendas.length : 0;
+    const lucro = totalVendasPagas - totalCompras;
+    const ticketMedio = vendasPagas.length > 0 ? totalVendasPagas / vendasPagas.length : 0;
     
     return {
-      totalVendas,
+      totalVendasPagas,
+      totalVendasFiado,
       totalCompras,
       lucro,
       ticketMedio,
-      quantidadeVendas: dadosFiltrados.vendas.length,
+      quantidadeVendasPagas: vendasPagas.length,
+      quantidadeVendasFiado: vendasFiado.length,
       quantidadeCompras: dadosFiltrados.compras.length
     };
   }, [dadosFiltrados]);
@@ -126,8 +133,8 @@ export default function FinanceiroPage() {
         ) : (
           <>
             {/* Cards de estatísticas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Total Vendas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+              {/* Total Vendas Pagas */}
               <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center">
@@ -137,10 +144,26 @@ export default function FinanceiroPage() {
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total em Vendas</p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  R$ {estatisticas.totalVendas.toFixed(2)}
+                  R$ {estatisticas.totalVendasPagas.toFixed(2)}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                  {estatisticas.quantidadeVendas} venda(s)
+                  {estatisticas.quantidadeVendasPagas} venda(s) paga(s)
+                </p>
+              </div>
+
+              {/* Total Vendas Fiado */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/20 rounded-xl flex items-center justify-center">
+                    <Calendar className="text-amber-600 dark:text-amber-400" size={24} />
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Vendas Fiado</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  R$ {estatisticas.totalVendasFiado.toFixed(2)}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                  {estatisticas.quantidadeVendasFiado} venda(s) pendente(s)
                 </p>
               </div>
 
@@ -218,21 +241,40 @@ export default function FinanceiroPage() {
                   </h3>
                 </div>
                 <div className="space-y-3">
-                  {dadosFiltrados.vendas.slice(0, 5).map((venda) => (
-                    <div key={venda.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
-                      <div>
-                        <p className="font-medium text-slate-900 dark:text-slate-100">
-                          {venda.clienteNome || 'Cliente não informado'}
-                        </p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                          {venda.dataVenda ? new Date(venda.dataVenda).toLocaleDateString('pt-BR') : '-'}
+                  {dadosFiltrados.vendas.slice(0, 5).map((venda) => {
+                    const isFiado = venda.status === 'em_andamento';
+                    return (
+                      <div 
+                        key={venda.id} 
+                        className={`flex items-center justify-between p-3 rounded-lg ${
+                          isFiado 
+                            ? 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800' 
+                            : 'bg-slate-50 dark:bg-slate-900'
+                        }`}
+                      >
+                        <div>
+                          <p className="font-medium text-slate-900 dark:text-slate-100">
+                            {venda.clienteNome || 'Cliente não informado'}
+                          </p>
+                          <p className={`text-sm ${
+                            isFiado 
+                              ? 'text-orange-600 dark:text-orange-400 font-medium' 
+                              : 'text-slate-500 dark:text-slate-400'
+                          }`}>
+                            {venda.dataVenda ? new Date(venda.dataVenda).toLocaleDateString('pt-BR') : '-'}
+                            {isFiado && ' • Fiado'}
+                          </p>
+                        </div>
+                        <p className={`font-semibold ${
+                          isFiado 
+                            ? 'text-orange-600 dark:text-orange-400' 
+                            : 'text-emerald-600 dark:text-emerald-400'
+                        }`}>
+                          R$ {(venda.valorTotal || 0).toFixed(2)}
                         </p>
                       </div>
-                      <p className="font-semibold text-emerald-600 dark:text-emerald-400">
-                        R$ {(venda.valorTotal || 0).toFixed(2)}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {dadosFiltrados.vendas.length === 0 && (
                     <p className="text-center text-slate-500 dark:text-slate-400 py-4">
                       Nenhuma venda no período

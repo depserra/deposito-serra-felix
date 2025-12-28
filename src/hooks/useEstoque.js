@@ -9,7 +9,8 @@ import {
   where, 
   orderBy, 
   getDocs,
-  serverTimestamp
+  serverTimestamp,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 
@@ -65,27 +66,92 @@ export function useEstoque() {
     }
   }
 
+  // Gera um código único de 5 dígitos
+  const gerarCodigoCompra = () => {
+    return Math.floor(10000 + Math.random() * 90000).toString();
+  };
+
   // Função para adicionar produto
   async function adicionarProduto(dados) {
     try {
       setLoading(true);
+      
+      const quantidade = parseInt(dados.quantidade) || 0;
+      const precoCompra = parseFloat(dados.precoCompra) || 0;
+      const valorTotal = quantidade * precoCompra;
       
       const produtoData = {
         ...dados,
         nome: dados.nome?.trim() || '',
         codigo: dados.codigo?.trim() || '',
         descricao: dados.descricao?.trim() || '',
-        quantidade: parseInt(dados.quantidade) || 0,
+        quantidade: quantidade,
         estoqueMinimo: parseInt(dados.estoqueMinimo) || 0,
-        precoCompra: parseFloat(dados.precoCompra) || 0,
+        precoCompra: precoCompra,
         precoVenda: parseFloat(dados.precoVenda) || 0,
         ativo: dados.ativo !== false, // default true
         criadoEm: serverTimestamp(),
         atualizadoEm: serverTimestamp()
       };
 
-      const docRef = await addDoc(collection(db, 'produtos'), produtoData);
-      return { id: docRef.id, ...produtoData };
+      // Usar batch para garantir consistência
+      const batch = writeBatch(db);
+      
+      // 1. Adicionar produto
+      const produtoRef = doc(collection(db, 'produtos'));
+      batch.set(produtoRef, produtoData);
+
+      // 2. Se houver quantidade e preço de compra, registrar a compra automaticamente
+      if (quantidade > 0 && precoCompra > 0) {
+        const compraRef = doc(collection(db, 'compras'));
+        const codigoCompra = gerarCodigoCompra();
+        
+        const compraData = {
+          codigoCompra: codigoCompra,
+          fornecedor: dados.fornecedor?.trim() || 'Cadastro Inicial',
+          dataCompra: new Date(),
+          valorTotal: valorTotal,
+          observacoes: `Compra automática - Cadastro inicial do produto: ${dados.nome?.trim() || ''}`,
+          produtoId: produtoRef.id,
+          nomeProduto: dados.nome?.trim() || '',
+          // Criar array itens para compatibilidade com a tela de compras
+          itens: [{
+            nomeProduto: dados.nome?.trim() || '',
+            categoria: dados.categoria?.trim() || '',
+            quantidade: quantidade,
+            valorCompra: precoCompra,
+            valorUnitario: precoCompra,
+            valorVenda: parseFloat(dados.precoVenda) || 0
+          }],
+          quantidade: quantidade,
+          valorCompra: precoCompra,
+          precoCompra: precoCompra,
+          precoVenda: parseFloat(dados.precoVenda) || 0,
+          categoria: dados.categoria?.trim() || '',
+          criadoEm: new Date(),
+          atualizadoEm: new Date()
+        };
+        
+        batch.set(compraRef, compraData);
+
+        // 3. Registrar movimentação de estoque
+        const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
+        batch.set(movimentacaoRef, {
+          produtoId: produtoRef.id,
+          produtoNome: dados.nome,
+          tipo: 'entrada',
+          quantidade: quantidade,
+          motivo: 'Cadastro inicial do produto',
+          compraId: compraRef.id,
+          codigoCompra: codigoCompra,
+          data: new Date()
+        });
+      }
+
+      // Executar todas as operações
+      await batch.commit();
+      
+      return { id: produtoRef.id, ...produtoData };
     } catch (err) {
       console.error('Erro ao adicionar produto:', err);
       setError(err.message);
