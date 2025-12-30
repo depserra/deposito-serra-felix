@@ -137,14 +137,119 @@ import { db } from '../services/firebase';export function useVendas() {
   const atualizarVenda = async (id, dados) => {
     try {
       setLoading(true);
+      const batch = writeBatch(db);
+      
+      // 1. Buscar a venda original para comparar quantidades
+      const vendaRef = doc(db, 'vendas', id);
+      const vendaSnap = await getDoc(vendaRef);
+      
+      if (!vendaSnap.exists()) {
+        throw new Error('Venda não encontrada');
+      }
+      
+      const vendaOriginal = vendaSnap.data();
+      const itensOriginais = vendaOriginal.itens || [];
+      const itensNovos = dados.itens || [];
+      
+      // 2. Processar cada item para ajustar o estoque
+      // Criar mapa dos itens originais para facilitar comparação
+      const mapaOriginais = {};
+      itensOriginais.forEach(item => {
+        const produtoId = item.produto || item.produtoId || item.id;
+        if (produtoId) {
+          mapaOriginais[produtoId] = parseFloat(item.quantidade) || 0;
+        }
+      });
+      
+      // Processar itens novos
+      for (const itemNovo of itensNovos) {
+        const produtoId = itemNovo.produto || itemNovo.produtoId || itemNovo.id;
+        if (!produtoId) continue;
+        
+        const quantidadeNova = parseFloat(itemNovo.quantidade) || 0;
+        const quantidadeOriginal = mapaOriginais[produtoId] || 0;
+        const diferencaQuantidade = quantidadeOriginal - quantidadeNova; // positivo = devolver, negativo = retirar
+        
+        if (diferencaQuantidade !== 0) {
+          const produtoRef = doc(db, 'produtos', produtoId);
+          const produtoSnap = await getDoc(produtoRef);
+          
+          if (produtoSnap.exists()) {
+            const produtoAtual = produtoSnap.data();
+            const quantidadeAtual = produtoAtual.quantidade || 0;
+            const novaQuantidadeEstoque = quantidadeAtual + diferencaQuantidade;
+            
+            // Atualizar estoque do produto
+            batch.update(produtoRef, {
+              quantidade: novaQuantidadeEstoque,
+              updatedAt: new Date().toISOString()
+            });
+            
+            // Registrar movimentação
+            const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
+            batch.set(movimentacaoRef, {
+              produtoId: produtoId,
+              tipo: diferencaQuantidade > 0 ? 'entrada' : 'saida',
+              quantidade: Math.abs(diferencaQuantidade),
+              quantidadeAnterior: quantidadeAtual,
+              quantidadeNova: novaQuantidadeEstoque,
+              motivo: `Edição de Venda #${vendaOriginal.codigoVenda || id}`,
+              vendaId: id,
+              data: new Date().toISOString(),
+              createdAt: new Date().toISOString()
+            });
+          }
+        }
+        
+        // Remover do mapa para identificar itens removidos depois
+        delete mapaOriginais[produtoId];
+      }
+      
+      // 3. Processar itens que foram removidos (restaram no mapa)
+      for (const [produtoId, quantidadeOriginal] of Object.entries(mapaOriginais)) {
+        const produtoRef = doc(db, 'produtos', produtoId);
+        const produtoSnap = await getDoc(produtoRef);
+        
+        if (produtoSnap.exists()) {
+          const produtoAtual = produtoSnap.data();
+          const quantidadeAtual = produtoAtual.quantidade || 0;
+          const novaQuantidadeEstoque = quantidadeAtual + quantidadeOriginal;
+          
+          // Devolver ao estoque
+          batch.update(produtoRef, {
+            quantidade: novaQuantidadeEstoque,
+            updatedAt: new Date().toISOString()
+          });
+          
+          // Registrar movimentação
+          const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
+          batch.set(movimentacaoRef, {
+            produtoId: produtoId,
+            tipo: 'entrada',
+            quantidade: quantidadeOriginal,
+            quantidadeAnterior: quantidadeAtual,
+            quantidadeNova: novaQuantidadeEstoque,
+            motivo: `Item removido da Venda #${vendaOriginal.codigoVenda || id}`,
+            vendaId: id,
+            data: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+          });
+        }
+      }
+      
+      // 4. Atualizar a venda
       const vendaData = {
         ...dados,
         valorTotal: Math.round((dados.valorTotal || 0) * 100) / 100,
         dataVenda: new Date(dados.dataVenda),
         atualizadoEm: new Date()
       };
-
-      await updateDoc(doc(db, 'vendas', id), vendaData);
+      
+      batch.update(vendaRef, vendaData);
+      
+      // 5. Executar todas as operações
+      await batch.commit();
+      
       return { id, ...vendaData };
     } catch (err) {
       setError(err.message);

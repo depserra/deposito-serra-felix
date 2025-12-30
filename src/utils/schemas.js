@@ -7,11 +7,11 @@ export const vendaSchema = z.object({
   dataVenda: z.string().min(1, 'Data da venda é obrigatória'),
   itens: z.array(z.object({
     produto: z.string().min(1, 'Produto é obrigatório'),
-    quantidade: z.number().min(1, 'Quantidade deve ser maior que 0'),
-    valorUnitario: z.number().min(0, 'Valor deve ser maior ou igual a 0'),
+    quantidade: z.coerce.number().min(1, 'Quantidade deve ser maior que 0'),
+    valorUnitario: z.coerce.number().min(0, 'Valor deve ser maior ou igual a 0'),
   })).min(1, 'Adicione pelo menos um item'),
-  valorTotal: z.number().min(0, 'Valor total deve ser maior ou igual a 0').optional(),
-  desconto: z.number().min(0, 'Desconto deve ser maior ou igual a 0').optional(),
+  valorTotal: z.coerce.number().min(0, 'Valor total deve ser maior ou igual a 0').optional(),
+  desconto: z.coerce.number().min(0, 'Desconto deve ser maior ou igual a 0').optional(),
   status: z.enum(['concluida', 'em_andamento', 'cancelada'], {
     required_error: 'Status é obrigatório'
   }),

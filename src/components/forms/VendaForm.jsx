@@ -12,6 +12,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
   const [showClienteModal, setShowClienteModal] = useState(false);
   const [clientesExtras, setClientesExtras] = useState([]);
   const [formInitialized, setFormInitialized] = useState(false);
+  const [errosEstoque, setErrosEstoque] = useState({});
   const { adicionarCliente } = useClientes();
   const { produtos, listarProdutos } = useEstoque();
 
@@ -96,6 +97,56 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
         calcularTotal();
       }
     }
+    // Limpa erro de estoque ao mudar o produto
+    setErrosEstoque(prev => {
+      const novos = { ...prev };
+      delete novos[index];
+      return novos;
+    });
+  };
+
+  // Função para validar quantidade do estoque
+  const validarQuantidadeEstoque = (index, quantidade) => {
+    const produtoId = watch(`itens.${index}.produto`);
+    if (!produtoId || !quantidade) {
+      setErrosEstoque(prev => {
+        const novos = { ...prev };
+        delete novos[index];
+        return novos;
+      });
+      return true;
+    }
+
+    const produto = produtos.find(p => p.id === produtoId);
+    if (!produto) return true;
+
+    let quantidadeDisponivel = produto.quantidade || 0;
+    const quantidadeSolicitada = Number(quantidade);
+
+    // Se estiver editando uma venda, considerar a quantidade original
+    if (initialData && initialData.itens && initialData.itens[index]) {
+      const itemOriginal = initialData.itens[index];
+      // Se for o mesmo produto, adicionar a quantidade original ao disponível
+      if (itemOriginal.produto === produtoId || itemOriginal.produtoId === produtoId || itemOriginal.id === produtoId) {
+        const quantidadeOriginal = Number(itemOriginal.quantidade) || 0;
+        quantidadeDisponivel += quantidadeOriginal;
+      }
+    }
+
+    if (quantidadeSolicitada > quantidadeDisponivel) {
+      setErrosEstoque(prev => ({
+        ...prev,
+        [index]: `Estoque insuficiente! Disponível: ${quantidadeDisponivel} ${produto.unidade || 'un'}`
+      }));
+      return false;
+    }
+
+    setErrosEstoque(prev => {
+      const novos = { ...prev };
+      delete novos[index];
+      return novos;
+    });
+    return true;
   };
 
   // Lista completa de clientes (vindos do pai + extras locais)
@@ -153,15 +204,28 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
   const desconto = watch('desconto');
   const calcularTotal = () => {
     const subtotal = Math.round(itens.reduce((sum, item) => 
-      sum + (item.quantidade || 0) * (item.valorUnitario || 0)
+      sum + (Number(item.quantidade) || 0) * (Number(item.valorUnitario) || 0)
     , 0) * 100) / 100;
-    const total = Math.round((subtotal - (desconto || 0)) * 100) / 100;
+    const total = Math.round((subtotal - (Number(desconto) || 0)) * 100) / 100;
     setValue('valorTotal', total);
     return { subtotal, total };
   };
 
   const handleFormSubmit = async (data) => {
     try {
+      // Valida estoque de todos os itens antes de submeter
+      let temErroEstoque = false;
+      data.itens.forEach((item, index) => {
+        if (!validarQuantidadeEstoque(index, item.quantidade)) {
+          temErroEstoque = true;
+        }
+      });
+
+      if (temErroEstoque) {
+        alert('Não é possível concluir a venda. Verifique a quantidade disponível no estoque.');
+        return;
+      }
+
       // Adiciona o nome do cliente aos dados
       const clienteSelecionado = clientes.find(c => c.id === data.clienteId);
       
@@ -170,10 +234,11 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
         ...data,
         clienteNome: clienteSelecionado?.nome,
         valorTotal: total,
-        desconto: data.desconto || 0,
+        desconto: Number(data.desconto) || 0,
         itens: data.itens.map(item => ({
           ...item,
-          quantidade: Math.round(Number(item.quantidade))
+          quantidade: Number(item.quantidade) || 0,
+          valorUnitario: Number(item.valorUnitario) || 0
         }))
       };
       
@@ -324,7 +389,11 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
           </div>
 
           <div className="space-y-4">
-            {fields.map((field, index) => (
+            {fields.map((field, index) => {
+              const produtoSelecionadoId = watch(`itens.${index}.produto`);
+              const produtoSelecionado = produtos.find(p => p.id === produtoSelecionadoId);
+              
+              return (
               <div key={field.id} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                   <div className="md:col-span-5">
@@ -344,6 +413,13 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
                         </option>
                       ))}
                     </select>
+                    {produtoSelecionado && produtoSelecionado.precoCompra && (
+                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                        Valor de compra: <span className="font-semibold text-blue-600 dark:text-blue-400">
+                          R$ {Number(produtoSelecionado.precoCompra).toFixed(2)}
+                        </span>
+                      </p>
+                    )}
                     {errors.itens?.[index]?.produto && (
                       <p className="mt-1 text-sm text-red-600">
                         {errors.itens[index].produto.message}
@@ -358,15 +434,25 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
                     <input
                       type="number"
                       min="1"
+                      max="999999999"
                       step="1"
                       placeholder="0"
-                      className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className={`w-full px-4 py-2 bg-white dark:bg-slate-700 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 ${
+                        errosEstoque[index] 
+                          ? 'border-red-500 focus:ring-red-500' 
+                          : 'border-slate-200 dark:border-slate-600 focus:ring-orange-500'
+                      }`}
                       {...register(`itens.${index}.quantidade`, {
-                        valueAsNumber: true,
-                        onChange: calcularTotal
+                        onChange: calcularTotal,
+                        onBlur: (e) => validarQuantidadeEstoque(index, e.target.value)
                       })}
                     />
-                    {errors.itens?.[index]?.quantidade && (
+                    {errosEstoque[index] && (
+                      <p className="mt-1 text-sm text-red-600 font-medium">
+                        {errosEstoque[index]}
+                      </p>
+                    )}
+                    {errors.itens?.[index]?.quantidade && !errosEstoque[index] && (
                       <p className="mt-1 text-sm text-red-600">
                         {errors.itens[index].quantidade.message}
                       </p>
@@ -413,7 +499,8 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
                   </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
 

@@ -14,6 +14,14 @@ import {
 } from 'lucide-react';
 import { LoadingSpinner } from '../../components/ui/LoadingComponents';
 
+// Função para formatar valores monetários no padrão brasileiro
+const formatarMoeda = (valor) => {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(valor);
+};
+
 export default function FinanceiroPage() {
   const [periodo, setPeriodo] = useState('mes'); // hoje, semana, mes, ano
   const [dataInicio, setDataInicio] = useState('');
@@ -143,8 +151,8 @@ export default function FinanceiroPage() {
                   <ArrowUpRight className="text-emerald-500" size={20} />
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total em Vendas</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  R$ {estatisticas.totalVendasPagas.toFixed(2)}
+                <p className="text-lg md:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                  R$ {formatarMoeda(estatisticas.totalVendasPagas)}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                   {estatisticas.quantidadeVendasPagas} venda(s) paga(s)
@@ -159,8 +167,8 @@ export default function FinanceiroPage() {
                   </div>
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Vendas Fiado</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  R$ {estatisticas.totalVendasFiado.toFixed(2)}
+                <p className="text-lg md:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                  R$ {formatarMoeda(estatisticas.totalVendasFiado)}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                   {estatisticas.quantidadeVendasFiado} venda(s) pendente(s)
@@ -176,8 +184,8 @@ export default function FinanceiroPage() {
                   <ArrowDownRight className="text-red-500" size={20} />
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total em Compras</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  R$ {estatisticas.totalCompras.toFixed(2)}
+                <p className="text-lg md:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                  R$ {formatarMoeda(estatisticas.totalCompras)}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                   {estatisticas.quantidadeCompras} compra(s)
@@ -201,12 +209,12 @@ export default function FinanceiroPage() {
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
                   {estatisticas.lucro >= 0 ? 'Lucro' : 'Prejuízo'}
                 </p>
-                <p className={`text-2xl font-bold ${
+                <p className={`text-lg md:text-xl lg:text-2xl font-bold whitespace-nowrap ${
                   estatisticas.lucro >= 0 
                     ? 'text-blue-600 dark:text-blue-400' 
                     : 'text-orange-600 dark:text-orange-400'
                 }`}>
-                  R$ {Math.abs(estatisticas.lucro).toFixed(2)}
+                  R$ {formatarMoeda(Math.abs(estatisticas.lucro))}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                   {estatisticas.lucro >= 0 ? 'Positivo' : 'Negativo'}
@@ -221,8 +229,8 @@ export default function FinanceiroPage() {
                   </div>
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Ticket Médio</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  R$ {estatisticas.ticketMedio.toFixed(2)}
+                <p className="text-lg md:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                  R$ {formatarMoeda(estatisticas.ticketMedio)}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                   Por venda
@@ -270,7 +278,7 @@ export default function FinanceiroPage() {
                             ? 'text-orange-600 dark:text-orange-400' 
                             : 'text-emerald-600 dark:text-emerald-400'
                         }`}>
-                          R$ {(venda.valorTotal || 0).toFixed(2)}
+                          R$ {formatarMoeda(venda.valorTotal || 0)}
                         </p>
                       </div>
                     );
@@ -303,7 +311,7 @@ export default function FinanceiroPage() {
                         </p>
                       </div>
                       <p className="font-semibold text-red-600 dark:text-red-400">
-                        R$ {(compra.valorTotal || 0).toFixed(2)}
+                        R$ {formatarMoeda(compra.valorTotal || 0)}
                       </p>
                     </div>
                   ))}

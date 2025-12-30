@@ -16,6 +16,14 @@ import { useRelatorioEstoque } from './hooks/useRelatorioEstoque';
 // Utilitários
 import { exportarPDF } from './utils/exportarPDF';
 
+// Função para formatar valores monetários no padrão brasileiro
+const formatarMoeda = (valor) => {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(valor);
+};
+
 export default function RelatoriosPage() {
   const { vendas, listarVendas } = useVendas();
   const { compras, listarCompras } = useCompras();
@@ -225,7 +233,7 @@ export default function RelatoriosPage() {
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
                 <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Total de Vendas</h3>
                 <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                  R$ {relatorioVendas.totalVendas.toFixed(2)}
+                  R$ {formatarMoeda(relatorioVendas.totalVendas)}
                 </p>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
@@ -237,7 +245,7 @@ export default function RelatoriosPage() {
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
                 <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Ticket Médio</h3>
                 <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  R$ {relatorioVendas.ticketMedio.toFixed(2)}
+                  R$ {formatarMoeda(relatorioVendas.ticketMedio)}
                 </p>
               </div>
             </div>
@@ -261,7 +269,7 @@ export default function RelatoriosPage() {
                         <td className="py-3 px-4 text-slate-900 dark:text-white font-medium">{produto.nome}</td>
                         <td className="py-3 px-4 text-right text-slate-900 dark:text-white">{produto.quantidade}</td>
                         <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-semibold">
-                          R$ {produto.valor.toFixed(2)}
+                          R$ {formatarMoeda(produto.valor)}
                         </td>
                       </tr>
                     ))}
@@ -279,7 +287,7 @@ export default function RelatoriosPage() {
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
                 <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Total de Compras</h3>
                 <p className="text-3xl font-bold text-red-600 dark:text-red-400">
-                  R$ {relatorioCompras.totalCompras.toFixed(2)}
+                  R$ {formatarMoeda(relatorioCompras.totalCompras)}
                 </p>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
@@ -309,7 +317,7 @@ export default function RelatoriosPage() {
                         <td className="py-3 px-4 text-slate-900 dark:text-white font-medium">{produto.nome}</td>
                         <td className="py-3 px-4 text-right text-slate-900 dark:text-white">{produto.quantidade}</td>
                         <td className="py-3 px-4 text-right text-red-600 dark:text-red-400 font-semibold">
-                          R$ {produto.valor.toFixed(2)}
+                          R$ {formatarMoeda(produto.valor)}
                         </td>
                       </tr>
                     ))}
@@ -327,7 +335,7 @@ export default function RelatoriosPage() {
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
                 <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Valor Total do Estoque</h3>
                 <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                  R$ {relatorioEstoque.valorEstoque.toFixed(2)}
+                  R$ {formatarMoeda(relatorioEstoque.valorEstoque)}
                 </p>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">

@@ -37,5 +37,5 @@ export const formatarData = (data) => {
 
 // Formata valor monetário
 export const formatarMoeda = (valor) => {
-  return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
