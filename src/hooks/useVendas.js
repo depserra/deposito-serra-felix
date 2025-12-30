@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   collection,
   addDoc,
@@ -16,15 +16,48 @@ import { db } from '../services/firebase';export function useVendas() {
   const [vendas, setVendas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const cacheRef = useRef({ data: null, timestamp: null });
 
   // Gera um código único de 5 dígitos para a venda
   const gerarCodigoVenda = () => {
     return Math.floor(10000 + Math.random() * 90000).toString();
   };
 
+  // Invalidar cache (chamar após adicionar/editar/deletar)
+  const invalidarCache = useCallback(() => {
+    cacheRef.current = { data: null, timestamp: null };
+  }, []);
+
   // Lista vendas com filtros
-  const listarVendas = async (searchTerm = '', statusFiltro = null) => {
+  const listarVendas = useCallback(async (searchTerm = '', statusFiltro = null) => {
     try {
+      // Verificar cache (2 minutos)
+      const cache = cacheRef.current;
+      if (cache.data && cache.timestamp && Date.now() - cache.timestamp < 120000) {
+        let vendasData = cache.data;
+        
+        // Aplicar filtros localmente
+        if (searchTerm) {
+          const termLower = searchTerm.toLowerCase();
+          vendasData = vendasData.filter(venda => 
+            venda.codigoVenda?.includes(termLower) ||
+            venda.clienteNome?.toLowerCase().includes(termLower) ||
+            venda.itens?.some(item => 
+              item.produto?.toLowerCase().includes(termLower)
+            )
+          );
+        }
+
+        if (statusFiltro) {
+          vendasData = vendasData.filter(venda => 
+            venda.status === statusFiltro
+          );
+        }
+
+        setVendas(vendasData);
+        return vendasData;
+      }
+      
       setLoading(true);
       setError(null);
       const vendasRef = collection(db, 'vendas');
@@ -57,6 +90,8 @@ import { db } from '../services/firebase';export function useVendas() {
         );
       }
 
+      // Atualizar cache
+      cacheRef.current = { data: vendasData, timestamp: Date.now() };
       setVendas(vendasData);
       return vendasData;
     } catch (err) {
@@ -66,7 +101,7 @@ import { db } from '../services/firebase';export function useVendas() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Adiciona nova venda com baixa automática no estoque
   const adicionarVenda = async (dados) => {
@@ -125,6 +160,9 @@ import { db } from '../services/firebase';export function useVendas() {
 
       // 3. Executar todas as operações
       await batch.commit();
+
+      // Invalidar cache
+      invalidarCache();
 
       return { id: vendaRef.id, ...vendaData };
     } catch (err) {
@@ -250,6 +288,9 @@ import { db } from '../services/firebase';export function useVendas() {
       // 5. Executar todas as operações
       await batch.commit();
       
+      // Invalidar cache
+      invalidarCache();
+      
       return { id, ...vendaData };
     } catch (err) {
       setError(err.message);
@@ -313,6 +354,9 @@ import { db } from '../services/firebase';export function useVendas() {
         
         // 4. Executar todas as operações
         await batch.commit();
+        
+        // Invalidar cache
+        invalidarCache();
       }
       
       return true;
@@ -332,6 +376,7 @@ import { db } from '../services/firebase';export function useVendas() {
     adicionarVenda,
     atualizarVenda,
     deletarVenda,
-    gerarCodigoVenda
+    gerarCodigoVenda,
+    invalidarCache
   };
 }

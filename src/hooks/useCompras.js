@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   collection,
   addDoc,
@@ -18,15 +18,42 @@ export function useCompras() {
   const [compras, setCompras] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const cacheRef = useRef({ data: null, timestamp: null });
 
   // Gera um código único de 5 dígitos para a compra
   const gerarCodigoCompra = () => {
     return Math.floor(10000 + Math.random() * 90000).toString();
   };
 
+  // Invalidar cache
+  const invalidarCache = useCallback(() => {
+    cacheRef.current = { data: null, timestamp: null };
+  }, []);
+
   // Lista compras com filtros
-  const listarCompras = async (searchTerm = '') => {
+  const listarCompras = useCallback(async (searchTerm = '') => {
     try {
+      // Verificar cache (2 minutos)
+      const cache = cacheRef.current;
+      if (cache.data && cache.timestamp && Date.now() - cache.timestamp < 120000) {
+        let comprasData = cache.data;
+        
+        // Aplicar filtros localmente
+        if (searchTerm) {
+          const termLower = searchTerm.toLowerCase();
+          comprasData = comprasData.filter(compra =>
+            compra.codigoCompra?.includes(termLower) ||
+            compra.fornecedor?.toLowerCase().includes(termLower) ||
+            compra.itens?.some(item =>
+              item.nomeProduto?.toLowerCase().includes(termLower)
+            )
+          );
+        }
+
+        setCompras(comprasData);
+        return comprasData;
+      }
+      
       setLoading(true);
       setError(null);
       const comprasRef = collection(db, 'compras');
@@ -53,6 +80,8 @@ export function useCompras() {
         );
       }
 
+      // Atualizar cache
+      cacheRef.current = { data: comprasData, timestamp: Date.now() };
       setCompras(comprasData);
       return comprasData;
     } catch (err) {
@@ -62,7 +91,7 @@ export function useCompras() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Adiciona nova compra com atualização automática do estoque
   const adicionarCompra = async (dados) => {
@@ -146,6 +175,9 @@ export function useCompras() {
       // Executar todas as operações em batch
       await batch.commit();
 
+      // Invalidar cache
+      invalidarCache();
+
       const novaCompra = { id: compraRef.id, ...compraData };
       setCompras(prev => [novaCompra, ...prev]);
       return novaCompra;
@@ -172,6 +204,9 @@ export function useCompras() {
       };
 
       await updateDoc(compraRef, dadosAtualizados);
+
+      // Invalidar cache
+      invalidarCache();
 
       setCompras(prev => prev.map(c =>
         c.id === id ? { id, ...dadosAtualizados } : c
@@ -245,7 +280,8 @@ export function useCompras() {
 
       // Executar todas as operações
       await batch.commit();
-
+      // Invalidar cache
+      invalidarCache();
       setCompras(prev => prev.filter(c => c.id !== id));
 
       return true;
@@ -265,6 +301,7 @@ export function useCompras() {
     listarCompras,
     adicionarCompra,
     atualizarCompra,
-    deletarCompra
+    deletarCompra,
+    invalidarCache
   };
 }

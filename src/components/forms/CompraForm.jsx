@@ -13,9 +13,9 @@ const compraSchema = z.object({
     z.object({
       nomeProduto: z.string().min(1, 'Nome do produto é obrigatório'),
       categoria: z.string().optional(),
-      quantidade: z.string().min(1, 'Quantidade é obrigatória'),
-      valorCompra: z.string().min(1, 'Valor de compra é obrigatório'),
-      valorVenda: z.string().min(1, 'Valor de venda é obrigatório')
+      quantidade: z.coerce.number().min(0.01, 'Quantidade é obrigatória'),
+      valorCompra: z.coerce.number().min(0, 'Valor de compra é obrigatório'),
+      valorVenda: z.coerce.number().min(0, 'Valor de venda é obrigatório')
     })
   ).min(1, 'Adicione pelo menos um item'),
   formaPagamento: z.string().optional(),

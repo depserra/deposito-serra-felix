@@ -9,22 +9,10 @@ const produtoSchema = z.object({
   descricao: z.string().optional(),
   categoria: z.string().min(1, 'Categoria é obrigatória'),
   unidade: z.string().min(1, 'Unidade é obrigatória'),
-  quantidade: z.union([
-    z.string().transform(val => val === '' ? 0 : Number(val)),
-    z.number()
-  ]).pipe(z.number().min(0, 'Quantidade deve ser maior ou igual a 0')),
-  estoqueMinimo: z.union([
-    z.string().transform(val => val === '' ? 0 : Number(val)),
-    z.number()
-  ]).pipe(z.number().min(0, 'Estoque mínimo deve ser maior ou igual a 0')),
-  precoCompra: z.union([
-    z.string().transform(val => val === '' ? 0 : Number(val)),
-    z.number()
-  ]).pipe(z.number().min(0, 'Preço de compra deve ser maior ou igual a 0')),
-  precoVenda: z.union([
-    z.string().transform(val => val === '' ? 0 : Number(val)),
-    z.number()
-  ]).pipe(z.number().min(0, 'Preço de venda deve ser maior ou igual a 0')),
+  quantidade: z.coerce.number().min(0, 'Quantidade deve ser maior ou igual a 0'),
+  estoqueMinimo: z.coerce.number().min(0, 'Estoque mínimo deve ser maior ou igual a 0'),
+  precoCompra: z.coerce.number().min(0, 'Preço de compra deve ser maior ou igual a 0'),
+  precoVenda: z.coerce.number().min(0, 'Preço de venda deve ser maior ou igual a 0'),
   fornecedor: z.string().optional(),
   localizacao: z.string().optional()
 });

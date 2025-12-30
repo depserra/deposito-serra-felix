@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   collection, 
   addDoc, 
@@ -19,12 +19,26 @@ export function useEstoque() {
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const cacheRef = useRef({ data: null, timestamp: null });
 
   // ============ PRODUTOS ============
 
+  // Invalidar cache
+  const invalidarCache = useCallback(() => {
+    cacheRef.current = { data: null, timestamp: null };
+  }, []);
+
   // Função para listar produtos
-  async function listarProdutos(filtros = {}) {
+  const listarProdutos = useCallback(async (filtros = {}) => {
     try {
+      // Verificar cache (2 minutos) se não houver filtros
+      const temFiltros = filtros.categoria || filtros.estoqueMinimo || filtros.nome;
+      const cache = cacheRef.current;
+      if (!temFiltros && cache.data && cache.timestamp && Date.now() - cache.timestamp < 120000) {
+        setProdutos(cache.data);
+        return cache.data;
+      }
+      
       setLoading(true);
       setError(null);
 
@@ -55,6 +69,11 @@ export function useEstoque() {
         );
       }
 
+      // Atualizar cache se não houver filtros
+      if (!temFiltros) {
+        cacheRef.current = { data: produtosData, timestamp: Date.now() };
+      }
+      
       setProdutos(produtosData);
       return produtosData;
     } catch (err) {
@@ -64,7 +83,7 @@ export function useEstoque() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   // Gera um código único de 5 dígitos
   const gerarCodigoCompra = () => {
@@ -151,6 +170,9 @@ export function useEstoque() {
       // Executar todas as operações
       await batch.commit();
       
+      // Invalidar cache
+      invalidarCache();
+      
       return { id: produtoRef.id, ...produtoData };
     } catch (err) {
       console.error('Erro ao adicionar produto:', err);
@@ -179,6 +201,10 @@ export function useEstoque() {
       };
 
       await updateDoc(doc(db, 'produtos', id), dadosNormalizados);
+      
+      // Invalidar cache
+      invalidarCache();
+      
       return { id, ...dadosNormalizados };
     } catch (err) {
       console.error('Erro ao atualizar produto:', err);
@@ -194,6 +220,10 @@ export function useEstoque() {
     try {
       setLoading(true);
       await deleteDoc(doc(db, 'produtos', id));
+      
+      // Invalidar cache
+      invalidarCache();
+      
       return true;
     } catch (err) {
       console.error('Erro ao deletar produto:', err);
@@ -225,6 +255,10 @@ export function useEstoque() {
       };
 
       await addDoc(collection(db, 'movimentosEstoque'), movimentoData);
+      
+      // Invalidar cache
+      invalidarCache();
+      
       return true;
     } catch (err) {
       console.error('Erro ao ajustar estoque:', err);
@@ -388,6 +422,7 @@ export function useEstoque() {
     atualizarProduto,
     deletarProduto,
     ajustarEstoque,
+    invalidarCache,
     
     // Categorias
     listarCategorias,
