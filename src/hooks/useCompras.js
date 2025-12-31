@@ -10,7 +10,8 @@ import {
   getDocs,
   getDoc,
   writeBatch,
-  where
+  where,
+  increment
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 
@@ -112,30 +113,32 @@ export function useCompras() {
       batch.set(compraRef, compraData);
 
       // 2. Atualizar o estoque para cada item da compra
+      // OTIMIZAÇÃO: Buscar todos os produtos de uma vez (apenas 1 leitura)
       if (dados.itens && dados.itens.length > 0) {
+        const todosProdutosRef = collection(db, 'produtos');
+        const todosProdutosSnap = await getDocs(todosProdutosRef);
+        const produtosMap = new Map();
+        todosProdutosSnap.docs.forEach(doc => {
+          produtosMap.set(doc.data().nome, { id: doc.id, ...doc.data() });
+        });
+
         for (const item of dados.itens) {
-          // Buscar produto por nome
-          const produtosRef = collection(db, 'produtos');
-          const q = query(produtosRef, where('nome', '==', item.nomeProduto));
-          const produtoSnap = await getDocs(q);
+          const produtoExistente = produtosMap.get(item.nomeProduto);
 
-          if (!produtoSnap.empty) {
-            // Produto existe - atualizar quantidade
-            const produtoDoc = produtoSnap.docs[0];
-            const produtoAtual = produtoDoc.data();
+          if (produtoExistente) {
+            // Produto existe - atualizar quantidade com increment
             const quantidadeComprada = parseFloat(item.quantidade) || 0;
-            const novaQuantidade = (produtoAtual.quantidade || 0) + quantidadeComprada;
 
-            batch.update(doc(db, 'produtos', produtoDoc.id), {
-              quantidade: novaQuantidade,
-              valorUnitario: parseFloat(item.valorUnitario) || produtoAtual.valorUnitario,
+            batch.update(doc(db, 'produtos', produtoExistente.id), {
+              quantidade: increment(quantidadeComprada),
+              valorUnitario: parseFloat(item.valorUnitario) || produtoExistente.valorUnitario,
               atualizadoEm: new Date()
             });
 
             // Registrar movimentação de estoque
             const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
             batch.set(movimentacaoRef, {
-              produtoId: produtoDoc.id,
+              produtoId: produtoExistente.id,
               produtoNome: item.nomeProduto,
               tipo: 'entrada',
               quantidade: quantidadeComprada,

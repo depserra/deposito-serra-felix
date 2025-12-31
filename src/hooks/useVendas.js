@@ -10,7 +10,8 @@ import {
   orderBy,
   getDocs,
   getDoc,
-  writeBatch
+  writeBatch,
+  increment
 } from 'firebase/firestore';
 import { db } from '../services/firebase';export function useVendas() {
   const [vendas, setVendas] = useState([]);
@@ -122,38 +123,30 @@ import { db } from '../services/firebase';export function useVendas() {
       };
       batch.set(vendaRef, vendaData);
 
-      // 2. Dar baixa no estoque para cada item da venda
+      // 2. Dar baixa no estoque para cada item da venda (SEM FAZER LEITURAS!)
       if (dados.itens && dados.itens.length > 0) {
         for (const item of dados.itens) {
           if (item.produto) {
             const produtoRef = doc(db, 'produtos', item.produto);
-            const produtoSnap = await getDoc(produtoRef);
+            const quantidadeVendida = parseFloat(item.quantidade) || 0;
             
-            if (produtoSnap.exists()) {
-              const produtoAtual = produtoSnap.data();
-              const quantidadeVendida = parseFloat(item.quantidade) || 0;
-              const novaQuantidade = (produtoAtual.quantidade || 0) - quantidadeVendida;
-              
-              // Atualiza quantidade do produto
-              batch.update(produtoRef, {
-                quantidade: Math.max(0, novaQuantidade),
-                updatedAt: new Date().toISOString()
-              });
+            // Atualiza quantidade do produto usando increment (sem precisar ler!)
+            batch.update(produtoRef, {
+              quantidade: increment(-quantidadeVendida),
+              updatedAt: new Date().toISOString()
+            });
 
-              // Registra movimentação de estoque
-              const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
-              batch.set(movimentacaoRef, {
-                produtoId: item.produto,
-                tipo: 'saida',
-                quantidade: quantidadeVendida,
-                quantidadeAnterior: produtoAtual.quantidade || 0,
-                quantidadeNova: Math.max(0, novaQuantidade),
-                motivo: `Venda #${codigoVenda}`,
-                vendaId: vendaRef.id,
-                data: new Date().toISOString(),
-                createdAt: new Date().toISOString()
-              });
-            }
+            // Registra movimentação de estoque (simplificada)
+            const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
+            batch.set(movimentacaoRef, {
+              produtoId: item.produto,
+              tipo: 'saida',
+              quantidade: quantidadeVendida,
+              motivo: `Venda #${codigoVenda}`,
+              vendaId: vendaRef.id,
+              data: new Date().toISOString(),
+              createdAt: new Date().toISOString()
+            });
           }
         }
       }
@@ -210,33 +203,24 @@ import { db } from '../services/firebase';export function useVendas() {
         
         if (diferencaQuantidade !== 0) {
           const produtoRef = doc(db, 'produtos', produtoId);
-          const produtoSnap = await getDoc(produtoRef);
           
-          if (produtoSnap.exists()) {
-            const produtoAtual = produtoSnap.data();
-            const quantidadeAtual = produtoAtual.quantidade || 0;
-            const novaQuantidadeEstoque = quantidadeAtual + diferencaQuantidade;
-            
-            // Atualizar estoque do produto
-            batch.update(produtoRef, {
-              quantidade: novaQuantidadeEstoque,
-              updatedAt: new Date().toISOString()
-            });
-            
-            // Registrar movimentação
-            const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
-            batch.set(movimentacaoRef, {
-              produtoId: produtoId,
-              tipo: diferencaQuantidade > 0 ? 'entrada' : 'saida',
-              quantidade: Math.abs(diferencaQuantidade),
-              quantidadeAnterior: quantidadeAtual,
-              quantidadeNova: novaQuantidadeEstoque,
-              motivo: `Edição de Venda #${vendaOriginal.codigoVenda || id}`,
-              vendaId: id,
-              data: new Date().toISOString(),
-              createdAt: new Date().toISOString()
-            });
-          }
+          // Atualizar estoque do produto usando increment (sem ler!)
+          batch.update(produtoRef, {
+            quantidade: increment(diferencaQuantidade),
+            updatedAt: new Date().toISOString()
+          });
+          
+          // Registrar movimentação (simplificada)
+          const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
+          batch.set(movimentacaoRef, {
+            produtoId: produtoId,
+            tipo: diferencaQuantidade > 0 ? 'entrada' : 'saida',
+            quantidade: Math.abs(diferencaQuantidade),
+            motivo: `Edição de Venda #${vendaOriginal.codigoVenda || id}`,
+            vendaId: id,
+            data: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+          });
         }
         
         // Remover do mapa para identificar itens removidos depois
@@ -246,33 +230,24 @@ import { db } from '../services/firebase';export function useVendas() {
       // 3. Processar itens que foram removidos (restaram no mapa)
       for (const [produtoId, quantidadeOriginal] of Object.entries(mapaOriginais)) {
         const produtoRef = doc(db, 'produtos', produtoId);
-        const produtoSnap = await getDoc(produtoRef);
         
-        if (produtoSnap.exists()) {
-          const produtoAtual = produtoSnap.data();
-          const quantidadeAtual = produtoAtual.quantidade || 0;
-          const novaQuantidadeEstoque = quantidadeAtual + quantidadeOriginal;
-          
-          // Devolver ao estoque
-          batch.update(produtoRef, {
-            quantidade: novaQuantidadeEstoque,
-            updatedAt: new Date().toISOString()
-          });
-          
-          // Registrar movimentação
-          const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
-          batch.set(movimentacaoRef, {
-            produtoId: produtoId,
-            tipo: 'entrada',
-            quantidade: quantidadeOriginal,
-            quantidadeAnterior: quantidadeAtual,
-            quantidadeNova: novaQuantidadeEstoque,
-            motivo: `Item removido da Venda #${vendaOriginal.codigoVenda || id}`,
-            vendaId: id,
-            data: new Date().toISOString(),
-            createdAt: new Date().toISOString()
-          });
-        }
+        // Devolver ao estoque usando increment (sem ler!)
+        batch.update(produtoRef, {
+          quantidade: increment(quantidadeOriginal),
+          updatedAt: new Date().toISOString()
+        });
+        
+        // Registrar movimentação (simplificada)
+        const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
+        batch.set(movimentacaoRef, {
+          produtoId: produtoId,
+          tipo: 'entrada',
+          quantidade: quantidadeOriginal,
+          motivo: `Item removido da Venda #${vendaOriginal.codigoVenda || id}`,
+          vendaId: id,
+          data: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        });
       }
       
       // 4. Atualizar a venda
@@ -313,38 +288,30 @@ import { db } from '../services/firebase';export function useVendas() {
       if (vendaSnap.exists()) {
         const vendaData = vendaSnap.data();
         
-        // 2. Reverter estoque de cada item
+        // 2. Reverter estoque de cada item (SEM FAZER LEITURAS!)
         if (vendaData.itens && vendaData.itens.length > 0) {
           for (const item of vendaData.itens) {
             if (item.produto) {
               const produtoRef = doc(db, 'produtos', item.produto);
-              const produtoSnap = await getDoc(produtoRef);
+              const quantidadeDevolvida = parseFloat(item.quantidade) || 0;
               
-              if (produtoSnap.exists()) {
-                const produtoAtual = produtoSnap.data();
-                const quantidadeDevolvida = parseFloat(item.quantidade) || 0;
-                const novaQuantidade = (produtoAtual.quantidade || 0) + quantidadeDevolvida;
-                
-                // Atualiza quantidade do produto (devolvendo ao estoque)
-                batch.update(produtoRef, {
-                  quantidade: novaQuantidade,
-                  updatedAt: new Date().toISOString()
-                });
+              // Atualiza quantidade do produto (devolvendo ao estoque) usando increment
+              batch.update(produtoRef, {
+                quantidade: increment(quantidadeDevolvida),
+                updatedAt: new Date().toISOString()
+              });
 
-                // Registra movimentação de estoque
-                const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
-                batch.set(movimentacaoRef, {
-                  produtoId: item.produto,
-                  tipo: 'entrada',
-                  quantidade: quantidadeDevolvida,
-                  quantidadeAnterior: produtoAtual.quantidade || 0,
-                  quantidadeNova: novaQuantidade,
-                  motivo: `Cancelamento de Venda #${vendaData.codigoVenda || id}`,
-                  vendaId: id,
-                  data: new Date().toISOString(),
-                  createdAt: new Date().toISOString()
-                });
-              }
+              // Registra movimentação de estoque (simplificada)
+              const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
+              batch.set(movimentacaoRef, {
+                produtoId: item.produto,
+                tipo: 'entrada',
+                quantidade: quantidadeDevolvida,
+                motivo: `Cancelamento de Venda #${vendaData.codigoVenda || id}`,
+                vendaId: id,
+                data: new Date().toISOString(),
+                createdAt: new Date().toISOString()
+              });
             }
           }
         }
