@@ -98,7 +98,7 @@ export default function ComprasPage() {
       <div className="space-y-8">
         {/* Header */}
         <div className="mb-8">
-          <p className="text-slate-600 dark:text-slate-400">Registre e gerencie as compras de mercadorias</p>
+          <p className="text-slate-600 dark:text-white">Registre e gerencie as compras de mercadorias</p>
         </div>
 
         {/* Controles de busca */}
@@ -153,7 +153,7 @@ export default function ComprasPage() {
         ) : error ? (
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
             <div className="text-red-500 font-medium mb-2">Erro ao carregar compras</div>
-            <p className="text-slate-600 dark:text-slate-400 mb-4">{error}</p>
+            <p className="text-slate-600 dark:text-white mb-4">{error}</p>
             <button
               onClick={() => listarCompras(debouncedSearchTerm)}
               className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
@@ -195,7 +195,10 @@ export default function ComprasPage() {
                         Fornecedor
                       </th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">
-                        Itens
+                        Produtos
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Qtd Itens
                       </th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">
                         Valor Total
@@ -229,9 +232,27 @@ export default function ComprasPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                          <div className="text-sm text-slate-700 dark:text-slate-300">
+                            {compra.itens && compra.itens.length > 0 ? (
+                              compra.itens.length === 1 ? (
+                                <span className="font-medium">{compra.itens[0].nomeProduto}</span>
+                              ) : (
+                                <div className="space-y-1">
+                                  <span className="font-medium block">{compra.itens[0].nomeProduto}</span>
+                                  <span className="text-xs text-slate-500 dark:text-white">
+                                    +{compra.itens.length - 1} outro(s)
+                                  </span>
+                                </div>
+                              )
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-white">
                             <Package size={16} />
-                            <span>{compra.itens?.length || 0} produto(s)</span>
+                            <span>{compra.itens?.length || 0}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -285,7 +306,7 @@ export default function ComprasPage() {
                         <span className="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">
                           #{compra.codigoCompra}
                         </span>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <p className="text-sm text-slate-600 dark:text-white">
                           {compra.dataCompra ? new Date(compra.dataCompra).toLocaleDateString('pt-BR') : '-'}
                         </p>
                       </div>
@@ -322,9 +343,24 @@ export default function ComprasPage() {
 
                     <div className="mb-3">
                       <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">{compra.fornecedor}</p>
-                      <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 mb-2">
+                      <div className="mb-2">
+                        <p className="text-xs text-slate-500 dark:text-white mb-1">Produtos:</p>
+                        {compra.itens && compra.itens.length > 0 ? (
+                          compra.itens.length === 1 ? (
+                            <p className="text-sm text-slate-700 dark:text-slate-300">{compra.itens[0].nomeProduto}</p>
+                          ) : (
+                            <div className="text-sm text-slate-700 dark:text-slate-300">
+                              <p className="font-medium">{compra.itens[0].nomeProduto}</p>
+                              <p className="text-xs text-slate-500 dark:text-white">+{compra.itens.length - 1} outro(s)</p>
+                            </div>
+                          )
+                        ) : (
+                          <p className="text-sm text-slate-400">-</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-white mb-2">
                         <Package size={16} />
-                        <span>{compra.itens?.length || 0} produto(s)</span>
+                        <span>{compra.itens?.length || 0} item(ns)</span>
                       </div>
                       <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                         R$ {formatCurrency(compra.valorTotal || 0)}
@@ -352,17 +388,17 @@ export default function ComprasPage() {
               {/* Informações principais */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Código da Compra</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Código da Compra</label>
                   <p className="text-lg font-semibold text-slate-900 dark:text-white">#{compraDetalhes.codigoCompra}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Data da Compra</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Data da Compra</label>
                   <p className="text-lg font-medium text-slate-900 dark:text-white">
                     {new Date(compraDetalhes.dataCompra).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Fornecedor</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Fornecedor</label>
                   <p className="text-lg font-medium text-slate-900 dark:text-white">{compraDetalhes.fornecedor}</p>
                 </div>
               </div>
@@ -374,19 +410,21 @@ export default function ComprasPage() {
                   <table className="w-full">
                     <thead className="bg-slate-50 dark:bg-slate-700/50">
                       <tr>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Produto</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Categoria</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Quantidade</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Valor de Compra</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Valor de Venda</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Subtotal</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Produto</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Categoria</th>
+                        <th className="text-center py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Unidade</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Quantidade</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Valor de Compra</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Valor de Venda</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Subtotal</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                       {compraDetalhes.itens?.map((item, index) => (
                         <tr key={index}>
                           <td className="py-3 px-4 text-slate-900 dark:text-white">{item.nomeProduto}</td>
-                          <td className="py-3 px-4 text-slate-600 dark:text-slate-400">{item.categoria || '-'}</td>
+                          <td className="py-3 px-4 text-slate-600 dark:text-white">{item.categoria || '-'}</td>
+                          <td className="py-3 px-4 text-center text-slate-900 dark:text-white font-medium">{item.unidade || 'un'}</td>
                           <td className="py-3 px-4 text-right text-slate-900 dark:text-white">{item.quantidade}</td>
                           <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {formatCurrency(item.valorCompra || item.valorUnitario)}</td>
                           <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {formatCurrency(item.valorVenda)}</td>
@@ -398,7 +436,7 @@ export default function ComprasPage() {
                     </tbody>
                     <tfoot className="border-t-2 border-slate-200 dark:border-slate-700">
                       <tr>
-                        <td colSpan="5" className="py-3 px-4 text-right font-semibold text-slate-900 dark:text-white">Valor Total:</td>
+                        <td colSpan="6" className="py-3 px-4 text-right font-semibold text-slate-900 dark:text-white">Valor Total:</td>
                         <td className="py-3 px-4 text-right font-bold text-lg text-red-600 dark:text-red-400">
                           R$ {formatCurrency(compraDetalhes.valorTotal)}
                         </td>
@@ -465,7 +503,7 @@ export default function ComprasPage() {
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
                   Excluir compra #{compraParaExcluir?.codigoCompra}
                 </h3>
-                <p className="text-slate-600 dark:text-slate-400">
+                <p className="text-slate-600 dark:text-white">
                   Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.
                 </p>
               </div>

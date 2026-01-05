@@ -173,7 +173,11 @@ export function useEstoque() {
       // Invalidar cache
       invalidarCache();
       
-      return { id: produtoRef.id, ...produtoData };
+      // Atualizar estado local imediatamente
+      const novoProduto = { id: produtoRef.id, ...produtoData };
+      setProdutos(prev => [...prev, novoProduto]);
+      
+      return novoProduto;
     } catch (err) {
       console.error('Erro ao adicionar produto:', err);
       setError(err.message);
@@ -205,7 +209,11 @@ export function useEstoque() {
       // Invalidar cache
       invalidarCache();
       
-      return { id, ...dadosNormalizados };
+      // Atualizar estado local imediatamente
+      const produtoAtualizado = { id, ...dadosNormalizados };
+      setProdutos(prev => prev.map(p => p.id === id ? produtoAtualizado : p));
+      
+      return produtoAtualizado;
     } catch (err) {
       console.error('Erro ao atualizar produto:', err);
       setError(err.message);
@@ -223,6 +231,9 @@ export function useEstoque() {
       
       // Invalidar cache
       invalidarCache();
+      
+      // Atualizar estado local imediatamente
+      setProdutos(prev => prev.filter(p => p.id !== id));
       
       return true;
     } catch (err) {
@@ -258,6 +269,11 @@ export function useEstoque() {
       
       // Invalidar cache
       invalidarCache();
+      
+      // Atualizar estado local imediatamente
+      setProdutos(prev => prev.map(p => 
+        p.id === produtoId ? { ...p, quantidade: parseInt(novaQuantidade) } : p
+      ));
       
       return true;
     } catch (err) {

@@ -15,6 +15,12 @@ import {
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 
+// Função auxiliar para converter string de data para Date no timezone local
+const stringParaDataLocal = (dataString) => {
+  const [ano, mes, dia] = dataString.split('-').map(Number);
+  return new Date(ano, mes - 1, dia);
+};
+
 export function useCompras() {
   const [compras, setCompras] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -106,7 +112,7 @@ export function useCompras() {
       const compraData = {
         ...dados,
         codigoCompra,
-        dataCompra: new Date(dados.dataCompra),
+        dataCompra: stringParaDataLocal(dados.dataCompra),
         criadoEm: new Date(),
         atualizadoEm: new Date()
       };
@@ -202,7 +208,7 @@ export function useCompras() {
       const compraRef = doc(db, 'compras', id);
       const dadosAtualizados = {
         ...dados,
-        dataCompra: new Date(dados.dataCompra),
+        dataCompra: stringParaDataLocal(dados.dataCompra),
         atualizadoEm: new Date()
       };
 

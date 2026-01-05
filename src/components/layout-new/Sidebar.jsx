@@ -50,7 +50,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
         <Logo size="md" />
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Sistema de Gestão</p>
+        <p className="text-sm text-slate-500 dark:text-white mt-2">Sistema de Gestão</p>
       </div>
       {/* Menu - Scrollable */}
       <nav className="flex-1 overflow-y-auto mt-6 px-4 pb-20">
@@ -65,7 +65,7 @@ export default function Sidebar() {
                 className={`group flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
                   isActive
                     ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-l-4 border-orange-500 shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    : 'text-slate-600 dark:text-white hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
                 title={label}
               >

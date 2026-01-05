@@ -13,7 +13,15 @@ import {
   writeBatch,
   increment
 } from 'firebase/firestore';
-import { db } from '../services/firebase';export function useVendas() {
+import { db } from '../services/firebase';
+
+// Função auxiliar para converter string de data para Date no timezone local
+const stringParaDataLocal = (dataString) => {
+  const [ano, mes, dia] = dataString.split('-').map(Number);
+  return new Date(ano, mes - 1, dia);
+};
+
+export function useVendas() {
   const [vendas, setVendas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -117,7 +125,7 @@ import { db } from '../services/firebase';export function useVendas() {
         ...dados,
         codigoVenda,
         valorTotal: Math.round((dados.valorTotal || 0) * 100) / 100,
-        dataVenda: new Date(dados.dataVenda),
+        dataVenda: stringParaDataLocal(dados.dataVenda),
         criadoEm: new Date(),
         atualizadoEm: new Date()
       };
@@ -204,23 +212,34 @@ import { db } from '../services/firebase';export function useVendas() {
         if (diferencaQuantidade !== 0) {
           const produtoRef = doc(db, 'produtos', produtoId);
           
-          // Atualizar estoque do produto usando increment (sem ler!)
-          batch.update(produtoRef, {
-            quantidade: increment(diferencaQuantidade),
-            updatedAt: new Date().toISOString()
-          });
-          
-          // Registrar movimentação (simplificada)
-          const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
-          batch.set(movimentacaoRef, {
-            produtoId: produtoId,
-            tipo: diferencaQuantidade > 0 ? 'entrada' : 'saida',
-            quantidade: Math.abs(diferencaQuantidade),
-            motivo: `Edição de Venda #${vendaOriginal.codigoVenda || id}`,
-            vendaId: id,
-            data: new Date().toISOString(),
-            createdAt: new Date().toISOString()
-          });
+          try {
+            // Verificar se o produto ainda existe
+            const produtoSnap = await getDoc(produtoRef);
+            if (produtoSnap.exists()) {
+              // Atualizar estoque do produto usando increment (sem ler novamente!)
+              batch.update(produtoRef, {
+                quantidade: increment(diferencaQuantidade),
+                updatedAt: new Date().toISOString()
+              });
+              
+              // Registrar movimentação (simplificada)
+              const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
+              batch.set(movimentacaoRef, {
+                produtoId: produtoId,
+                tipo: diferencaQuantidade > 0 ? 'entrada' : 'saida',
+                quantidade: Math.abs(diferencaQuantidade),
+                motivo: `Edição de Venda #${vendaOriginal.codigoVenda || id}`,
+                vendaId: id,
+                data: new Date().toISOString(),
+                createdAt: new Date().toISOString()
+              });
+            } else {
+              console.warn(`Produto ${produtoId} não existe mais, ignorando atualização de estoque`);
+            }
+          } catch (error) {
+            console.warn(`Erro ao atualizar produto ${produtoId}:`, error);
+            // Continuar mesmo se o produto não existir
+          }
         }
         
         // Remover do mapa para identificar itens removidos depois
@@ -231,30 +250,41 @@ import { db } from '../services/firebase';export function useVendas() {
       for (const [produtoId, quantidadeOriginal] of Object.entries(mapaOriginais)) {
         const produtoRef = doc(db, 'produtos', produtoId);
         
-        // Devolver ao estoque usando increment (sem ler!)
-        batch.update(produtoRef, {
-          quantidade: increment(quantidadeOriginal),
-          updatedAt: new Date().toISOString()
-        });
-        
-        // Registrar movimentação (simplificada)
-        const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
-        batch.set(movimentacaoRef, {
-          produtoId: produtoId,
-          tipo: 'entrada',
-          quantidade: quantidadeOriginal,
-          motivo: `Item removido da Venda #${vendaOriginal.codigoVenda || id}`,
-          vendaId: id,
-          data: new Date().toISOString(),
-          createdAt: new Date().toISOString()
-        });
+        try {
+          // Verificar se o produto ainda existe
+          const produtoSnap = await getDoc(produtoRef);
+          if (produtoSnap.exists()) {
+            // Devolver ao estoque usando increment (sem ler novamente!)
+            batch.update(produtoRef, {
+              quantidade: increment(quantidadeOriginal),
+              updatedAt: new Date().toISOString()
+            });
+            
+            // Registrar movimentação (simplificada)
+            const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
+            batch.set(movimentacaoRef, {
+              produtoId: produtoId,
+              tipo: 'entrada',
+              quantidade: quantidadeOriginal,
+              motivo: `Item removido da Venda #${vendaOriginal.codigoVenda || id}`,
+              vendaId: id,
+              data: new Date().toISOString(),
+              createdAt: new Date().toISOString()
+            });
+          } else {
+            console.warn(`Produto ${produtoId} não existe mais, ignorando devolução de estoque`);
+          }
+        } catch (error) {
+          console.warn(`Erro ao devolver produto ${produtoId}:`, error);
+          // Continuar mesmo se o produto não existir
+        }
       }
       
       // 4. Atualizar a venda
       const vendaData = {
         ...dados,
         valorTotal: Math.round((dados.valorTotal || 0) * 100) / 100,
-        dataVenda: new Date(dados.dataVenda),
+        dataVenda: stringParaDataLocal(dados.dataVenda),
         atualizadoEm: new Date()
       };
       
@@ -295,23 +325,34 @@ import { db } from '../services/firebase';export function useVendas() {
               const produtoRef = doc(db, 'produtos', item.produto);
               const quantidadeDevolvida = parseFloat(item.quantidade) || 0;
               
-              // Atualiza quantidade do produto (devolvendo ao estoque) usando increment
-              batch.update(produtoRef, {
-                quantidade: increment(quantidadeDevolvida),
-                updatedAt: new Date().toISOString()
-              });
+              try {
+                // Verificar se o produto ainda existe
+                const produtoSnap = await getDoc(produtoRef);
+                if (produtoSnap.exists()) {
+                  // Atualiza quantidade do produto (devolvendo ao estoque) usando increment
+                  batch.update(produtoRef, {
+                    quantidade: increment(quantidadeDevolvida),
+                    updatedAt: new Date().toISOString()
+                  });
 
-              // Registra movimentação de estoque (simplificada)
-              const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
-              batch.set(movimentacaoRef, {
-                produtoId: item.produto,
-                tipo: 'entrada',
-                quantidade: quantidadeDevolvida,
-                motivo: `Cancelamento de Venda #${vendaData.codigoVenda || id}`,
-                vendaId: id,
-                data: new Date().toISOString(),
-                createdAt: new Date().toISOString()
-              });
+                  // Registra movimentação de estoque (simplificada)
+                  const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
+                  batch.set(movimentacaoRef, {
+                    produtoId: item.produto,
+                    tipo: 'entrada',
+                    quantidade: quantidadeDevolvida,
+                    motivo: `Cancelamento de Venda #${vendaData.codigoVenda || id}`,
+                    vendaId: id,
+                    data: new Date().toISOString(),
+                    createdAt: new Date().toISOString()
+                  });
+                } else {
+                  console.warn(`Produto ${item.produto} não existe mais, ignorando devolução de estoque`);
+                }
+              } catch (error) {
+                console.warn(`Erro ao devolver produto ${item.produto}:`, error);
+                // Continuar mesmo se o produto não existir
+              }
             }
           }
         }

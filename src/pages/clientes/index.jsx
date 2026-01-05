@@ -182,7 +182,7 @@ export default function ClientesPage() {
       <div className="space-y-8">
         {/* Header */}
         <div className="mb-8">
-          <p className="text-slate-600 dark:text-slate-400">Gerencie seus clientes de forma simples e eficiente</p>
+          <p className="text-slate-600 dark:text-white">Gerencie seus clientes de forma simples e eficiente</p>
           {!isOnline && (
             <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
               <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
@@ -258,7 +258,7 @@ export default function ClientesPage() {
             <div className="text-red-500 font-medium mb-2">
               {isOnline ? 'Erro ao carregar clientes' : 'Sem conexão'}
             </div>
-            <p className="text-slate-600 dark:text-slate-400 mb-4">{error}</p>
+            <p className="text-slate-600 dark:text-white mb-4">{error}</p>
             <div className="flex gap-2 justify-center">
               <button 
                 onClick={() => listarClientes(debouncedSearchTerm)}
@@ -329,10 +329,10 @@ export default function ClientesPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-slate-600 dark:text-slate-400">{cliente.telefone || '-'}</span>
+                          <span className="text-slate-600 dark:text-white">{cliente.telefone || '-'}</span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-slate-600 dark:text-slate-400">{cliente.cpf || '-'}</span>
+                          <span className="text-slate-600 dark:text-white">{cliente.cpf || '-'}</span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex justify-end items-center gap-2">
@@ -384,7 +384,7 @@ export default function ClientesPage() {
                         <h4 className="font-medium text-slate-900 dark:text-slate-100">
                           {cliente.nome}
                         </h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">{cliente.telefone || 'Telefone não informado'}</p>
+                        <p className="text-sm text-slate-600 dark:text-white">{cliente.telefone || 'Telefone não informado'}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -421,7 +421,7 @@ export default function ClientesPage() {
                       </div>
                     </div>
 
-                    <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                    <div className="text-sm text-slate-600 dark:text-white space-y-1">
                       <p><span className="font-medium">CPF:</span> {cliente.cpf || 'Não informado'}</p>
                     </div>
                   </div>
@@ -462,7 +462,7 @@ export default function ClientesPage() {
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
                   Excluir cliente {clienteParaExcluir?.nome}
                 </h3>
-                <p className="text-slate-600 dark:text-slate-400">
+                <p className="text-slate-600 dark:text-white">
                   Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.
                 </p>
               </div>
@@ -552,26 +552,26 @@ export default function ClientesPage() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">Nome</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white">Nome</label>
                     <p className="text-slate-900 dark:text-slate-100 font-medium">{clienteDetalhes.nome || 'Não informado'}</p>
                   </div>
                   {clienteDetalhes.apelido && (
                     <div>
-                      <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">Apelido</label>
+                      <label className="block text-sm font-medium text-slate-600 dark:text-white">Apelido</label>
                       <p className="text-slate-900 dark:text-slate-100">{clienteDetalhes.apelido}</p>
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">Telefone</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white">Telefone</label>
                     <p className="text-slate-900 dark:text-slate-100">{clienteDetalhes.telefone || 'Não informado'}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">CPF</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white">CPF</label>
                     <p className="text-slate-900 dark:text-slate-100">{clienteDetalhes.cpf || 'Não informado'}</p>
                   </div>
                   {clienteDetalhes.email && (
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">E-mail</label>
+                      <label className="block text-sm font-medium text-slate-600 dark:text-white">E-mail</label>
                       <p className="text-slate-900 dark:text-slate-100">{clienteDetalhes.email}</p>
                     </div>
                   )}
@@ -583,19 +583,19 @@ export default function ClientesPage() {
                 <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-4">Endereço</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">Endereço Completo</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white">Endereço Completo</label>
                     <p className="text-slate-900 dark:text-slate-100">{clienteDetalhes.endereco || 'Não informado'}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">Cidade</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white">Cidade</label>
                     <p className="text-slate-900 dark:text-slate-100">{clienteDetalhes.cidade || 'Não informado'}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">Estado</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white">Estado</label>
                     <p className="text-slate-900 dark:text-slate-100">{clienteDetalhes.estado || 'Não informado'}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">CEP</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white">CEP</label>
                     <p className="text-slate-900 dark:text-slate-100">{clienteDetalhes.cep || 'Não informado'}</p>
                   </div>
                 </div>
@@ -615,7 +615,7 @@ export default function ClientesPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   {clienteDetalhes.criadoEm && (
                     <div>
-                      <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">Cadastrado em</label>
+                      <label className="block text-sm font-medium text-slate-600 dark:text-white">Cadastrado em</label>
                       <p className="text-slate-900 dark:text-slate-100">
                         {new Date(clienteDetalhes.criadoEm.seconds ? clienteDetalhes.criadoEm.toDate() : clienteDetalhes.criadoEm).toLocaleString('pt-BR')}
                       </p>
@@ -623,7 +623,7 @@ export default function ClientesPage() {
                   )}
                   {clienteDetalhes.atualizadoEm && (
                     <div>
-                      <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">Última atualização</label>
+                      <label className="block text-sm font-medium text-slate-600 dark:text-white">Última atualização</label>
                       <p className="text-slate-900 dark:text-slate-100">
                         {new Date(clienteDetalhes.atualizadoEm.seconds ? clienteDetalhes.atualizadoEm.toDate() : clienteDetalhes.atualizadoEm).toLocaleString('pt-BR')}
                       </p>

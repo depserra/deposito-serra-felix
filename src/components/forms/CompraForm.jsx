@@ -13,6 +13,7 @@ const compraSchema = z.object({
     z.object({
       nomeProduto: z.string().min(1, 'Nome do produto é obrigatório'),
       categoria: z.string().optional(),
+      unidade: z.string().min(1, 'Unidade é obrigatória'),
       quantidade: z.coerce.number().min(0.01, 'Quantidade é obrigatória'),
       valorCompra: z.coerce.number().min(0, 'Valor de compra é obrigatório'),
       valorVenda: z.coerce.number().min(0, 'Valor de venda é obrigatório')
@@ -47,7 +48,7 @@ export default function CompraForm({ onSubmit, initialData }) {
     defaultValues: {
       fornecedor: '',
       dataCompra: new Date().toISOString().split('T')[0],
-      itens: [{ nomeProduto: '', categoria: '', quantidade: '', valorCompra: '', valorVenda: '' }],
+      itens: [{ nomeProduto: '', categoria: '', unidade: 'un', quantidade: '', valorCompra: '', valorVenda: '' }],
       formaPagamento: '',
       observacoes: ''
     }
@@ -69,6 +70,7 @@ export default function CompraForm({ onSubmit, initialData }) {
       const itensFormatados = (initialData.itens || []).map(item => ({
         nomeProduto: item.nomeProduto || '',
         categoria: item.categoria || '',
+        unidade: item.unidade || 'un',
         quantidade: item.quantidade?.toString() || '',
         valorCompra: item.valorCompra?.toString() || item.valorUnitario?.toString() || '',
         valorVenda: item.valorVenda?.toString() || ''
@@ -202,7 +204,7 @@ export default function CompraForm({ onSubmit, initialData }) {
           </h3>
           <button
             type="button"
-            onClick={() => append({ nomeProduto: '', categoria: '', quantidade: '', valorCompra: '', valorVenda: '' })}
+            onClick={() => append({ nomeProduto: '', categoria: '', unidade: 'un', quantidade: '', valorCompra: '', valorVenda: '' })}
             className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
           >
             <Plus size={16} />
@@ -213,7 +215,7 @@ export default function CompraForm({ onSubmit, initialData }) {
         <div className="space-y-4">
           {fields.map((field, index) => (
             <div key={field.id} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-              <div className="grid grid-cols-1 md:grid-cols-14 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-16 gap-4">
                 <div className="md:col-span-3 relative">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Nome do Produto *
@@ -241,7 +243,7 @@ export default function CompraForm({ onSubmit, initialData }) {
                     {inputFocado === index && produtoSugestoes[index]?.length > 0 && (
                       <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         <div className="p-2">
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 px-2">
+                          <p className="text-xs text-slate-500 dark:text-white mb-2 px-2">
                             Produtos existentes no estoque:
                           </p>
                           {produtoSugestoes[index].map((produto) => (
@@ -255,7 +257,7 @@ export default function CompraForm({ onSubmit, initialData }) {
                                   <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                                     {produto.nome}
                                   </p>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                                  <p className="text-xs text-slate-500 dark:text-white">
                                     {produto.categoria} • Estoque: {produto.quantidade || 0}
                                   </p>
                                 </div>
@@ -289,12 +291,39 @@ export default function CompraForm({ onSubmit, initialData }) {
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Unidade *
+                  </label>
+                  <select
+                    {...register(`itens.${index}.unidade`)}
+                    className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="un">Unidade</option>
+                    <option value="kg">Quilograma (kg)</option>
+                    <option value="g">Grama (g)</option>
+                    <option value="l">Litro (L)</option>
+                    <option value="ml">Mililitro (ml)</option>
+                    <option value="m">Metro (m)</option>
+                    <option value="m2">Metro² (m²)</option>
+                    <option value="m3">Metro³ (m³)</option>
+                    <option value="cx">Caixa</option>
+                    <option value="pct">Pacote</option>
+                    <option value="sc">Saco</option>
+                    <option value="milh">Milheiro</option>
+                  </select>
+                  {errors.itens?.[index]?.unidade && (
+                    <p className="mt-1 text-sm text-red-600">{errors.itens[index].unidade.message}</p>
+                  )}
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Quantidade *
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     {...register(`itens.${index}.quantidade`)}
+                    onWheel={(e) => e.target.blur()}
                     className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="0"
                   />
@@ -308,11 +337,12 @@ export default function CompraForm({ onSubmit, initialData }) {
                     Valor de Compra *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">R$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-white">R$</span>
                     <input
                       type="number"
                       step="0.01"
                       {...register(`itens.${index}.valorCompra`)}
+                      onWheel={(e) => e.target.blur()}
                       className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
                       placeholder="0,00"
                     />
@@ -327,11 +357,12 @@ export default function CompraForm({ onSubmit, initialData }) {
                     Valor de Venda *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">R$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-white">R$</span>
                     <input
                       type="number"
                       step="0.01"
                       {...register(`itens.${index}.valorVenda`)}
+                      onWheel={(e) => e.target.blur()}
                       className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
                       placeholder="0,00"
                     />

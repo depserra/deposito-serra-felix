@@ -414,7 +414,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
                       ))}
                     </select>
                     {produtoSelecionado && produtoSelecionado.precoCompra && (
-                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                      <p className="mt-1 text-xs text-slate-600 dark:text-white">
                         Valor de compra: <span className="font-semibold text-blue-600 dark:text-blue-400">
                           R$ {Number(produtoSelecionado.precoCompra).toFixed(2)}
                         </span>
@@ -437,6 +437,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
                       max="999999999"
                       step="1"
                       placeholder="0"
+                      onWheel={(e) => e.target.blur()}
                       className={`w-full px-4 py-2 bg-white dark:bg-slate-700 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 ${
                         errosEstoque[index] 
                           ? 'border-red-500 focus:ring-red-500' 
@@ -464,12 +465,13 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
                       Valor Unitário *
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">R$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-white">R$</span>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
                         placeholder="0,00"
+                        onWheel={(e) => e.target.blur()}
                         className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                         readOnly
                         {...register(`itens.${index}.valorUnitario`, {
@@ -558,12 +560,13 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
             <div className="flex justify-between items-center gap-4">
               <label className="text-slate-700 dark:text-slate-300">Desconto:</label>
               <div className="relative w-48">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">R$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-white">R$</span>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   placeholder="0,00"
+                  onWheel={(e) => e.target.blur()}
                   className="w-full pl-10 pr-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                   {...register('desconto', {
                     valueAsNumber: true,

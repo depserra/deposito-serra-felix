@@ -151,7 +151,7 @@ export default function Estoque() {
           <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Total de Produtos</p>
+                <p className="text-sm text-slate-600 dark:text-white">Total de Produtos</p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{stats.total}</p>
               </div>
               <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -163,7 +163,7 @@ export default function Estoque() {
           <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Estoque Baixo</p>
+                <p className="text-sm text-slate-600 dark:text-white">Estoque Baixo</p>
                 <p className="text-2xl font-bold text-orange-600 mt-1">{stats.baixoEstoque}</p>
               </div>
               <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
@@ -175,7 +175,7 @@ export default function Estoque() {
           <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Produtos Zerados</p>
+                <p className="text-sm text-slate-600 dark:text-white">Produtos Zerados</p>
                 <p className="text-2xl font-bold text-red-600 mt-1">{stats.zerados}</p>
               </div>
               <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
@@ -187,7 +187,7 @@ export default function Estoque() {
           <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Valor Total</p>
+                <p className="text-sm text-slate-600 dark:text-white">Valor Total</p>
                 <p className="text-2xl font-bold text-green-600 mt-1">
                   R$ {stats.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
@@ -278,7 +278,7 @@ export default function Estoque() {
                 </button>
               </div>
             ) : produtosFiltrados.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 dark:text-slate-400">
+              <div className="p-8 text-center text-slate-500 dark:text-white">
                 <Package className="mx-auto mb-4 text-slate-300 dark:text-slate-600" size={48} />
                 <p>Nenhum produto encontrado</p>
               </div>
@@ -305,7 +305,7 @@ export default function Estoque() {
                           <div>
                             <p className="font-medium text-slate-900 dark:text-slate-100">{produto.nome}</p>
                             {produto.descricao && (
-                              <p className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-xs">{produto.descricao}</p>
+                              <p className="text-sm text-slate-500 dark:text-white truncate max-w-xs">{produto.descricao}</p>
                             )}
                           </div>
                         </td>
@@ -370,7 +370,7 @@ export default function Estoque() {
         </div>
 
         {/* Rodapé com informações */}
-        <div className="text-center text-sm text-slate-500 dark:text-slate-400">
+        <div className="text-center text-sm text-slate-500 dark:text-white">
           Mostrando {produtosFiltrados.length} de {produtos.length} produtos
         </div>
 
@@ -389,15 +389,15 @@ export default function Estoque() {
               {/* Informações principais */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Nome do Produto</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Nome do Produto</label>
                   <p className="text-xl font-semibold text-slate-900 dark:text-white">{produtoDetalhes.nome}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Categoria</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Categoria</label>
                   <p className="text-lg font-medium text-slate-900 dark:text-white">{produtoDetalhes.categoria || 'Sem categoria'}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Unidade</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Unidade</label>
                   <p className="text-lg font-medium text-slate-900 dark:text-white">{getNomeUnidade(produtoDetalhes.unidade)}</p>
                 </div>
               </div>
@@ -407,15 +407,15 @@ export default function Estoque() {
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Estoque</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Quantidade Atual</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Quantidade Atual</label>
                     <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{produtoDetalhes.quantidade || 0}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Estoque Mínimo</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Estoque Mínimo</label>
                     <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{produtoDetalhes.estoqueMinimo || 0}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Status</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Status</label>
                     {(produtoDetalhes.quantidade || 0) <= (produtoDetalhes.estoqueMinimo || 0) ? (
                       <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
                         <AlertTriangle size={14} />
@@ -435,19 +435,19 @@ export default function Estoque() {
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Preços</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Preço de Compra</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Preço de Compra</label>
                     <p className="text-xl font-semibold text-red-600 dark:text-red-400">
                       R$ {formatCurrency(produtoDetalhes.precoCompra || 0)}
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Preço de Venda</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Preço de Venda</label>
                     <p className="text-xl font-semibold text-green-600 dark:text-green-400">
                       R$ {formatCurrency(produtoDetalhes.precoVenda || 0)}
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Valor Total em Estoque</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Valor Total em Estoque</label>
                     <p className="text-xl font-semibold text-blue-600 dark:text-blue-400">
                       R$ {formatCurrency((produtoDetalhes.quantidade || 0) * (produtoDetalhes.precoVenda || 0))}
                     </p>
@@ -511,7 +511,7 @@ export default function Estoque() {
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
                   Excluir produto {produtoParaExcluir?.nome}
                 </h3>
-                <p className="text-slate-600 dark:text-slate-400">
+                <p className="text-slate-600 dark:text-white">
                   Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.
                 </p>
               </div>

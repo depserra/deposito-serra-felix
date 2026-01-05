@@ -1469,19 +1469,19 @@ export default function RelatoriosPage() {
             {/* Cards de Resumo */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Total de Vendas</h3>
+                <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Total de Vendas</h3>
                 <p className="text-3xl font-bold text-green-600 dark:text-green-400">
                   R$ {relatorioVendas.totalVendas.toFixed(2)}
                 </p>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Quantidade de Vendas</h3>
+                <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Quantidade de Vendas</h3>
                 <p className="text-3xl font-bold text-slate-900 dark:text-white">
                   {relatorioVendas.quantidadeVendas}
                 </p>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Ticket Médio</h3>
+                <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Ticket Médio</h3>
                 <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
                   R$ {relatorioVendas.ticketMedio.toFixed(2)}
                 </p>
@@ -1495,10 +1495,10 @@ export default function RelatoriosPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-700">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">#</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Produto</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Quantidade</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Valor Total</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">#</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Produto</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Quantidade</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Valor Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1524,10 +1524,10 @@ export default function RelatoriosPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-700">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">#</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Cliente</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Compras</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Valor Total</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">#</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Cliente</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Compras</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Valor Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1553,13 +1553,13 @@ export default function RelatoriosPage() {
             {/* Cards de Resumo */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Total de Compras</h3>
+                <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Total de Compras</h3>
                 <p className="text-3xl font-bold text-red-600 dark:text-red-400">
                   R$ {relatorioCompras.totalCompras.toFixed(2)}
                 </p>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Quantidade de Compras</h3>
+                <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Quantidade de Compras</h3>
                 <p className="text-3xl font-bold text-slate-900 dark:text-white">
                   {relatorioCompras.quantidadeCompras}
                 </p>
@@ -1573,10 +1573,10 @@ export default function RelatoriosPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-700">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">#</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Produto</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Quantidade</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Valor Total</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">#</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Produto</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Quantidade</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Valor Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1602,25 +1602,25 @@ export default function RelatoriosPage() {
             {/* Cards de Resumo */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Estoque Total</h3>
+                <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Estoque Total</h3>
                 <p className="text-3xl font-bold text-slate-900 dark:text-white">
                   {relatorioEstoque.estoqueTotal}
                 </p>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Valor do Estoque</h3>
+                <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Valor do Estoque</h3>
                 <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
                   R$ {relatorioEstoque.valorEstoque.toFixed(2)}
                 </p>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Estoque Baixo</h3>
+                <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Estoque Baixo</h3>
                 <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
                   {relatorioEstoque.estoqueBaixo.length}
                 </p>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Sem Estoque</h3>
+                <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Sem Estoque</h3>
                 <p className="text-3xl font-bold text-red-600 dark:text-red-400">
                   {relatorioEstoque.produtosSemEstoque.length}
                 </p>
@@ -1634,10 +1634,10 @@ export default function RelatoriosPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-700">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Categoria</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Produtos</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Quantidade</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Valor</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Categoria</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Produtos</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Quantidade</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Valor</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1667,9 +1667,9 @@ export default function RelatoriosPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-slate-200 dark:border-slate-700">
-                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Produto</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Estoque Atual</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Estoque Mínimo</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Produto</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Estoque Atual</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Estoque Mínimo</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1697,19 +1697,19 @@ export default function RelatoriosPage() {
             {/* Cards de Resumo */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Total de Clientes</h3>
+                <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Total de Clientes</h3>
                 <p className="text-3xl font-bold text-slate-900 dark:text-white">
                   {relatorioClientes.totalClientes}
                 </p>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Clientes Ativos</h3>
+                <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Clientes Ativos</h3>
                 <p className="text-3xl font-bold text-green-600 dark:text-green-400">
                   {relatorioClientes.clientesComCompras}
                 </p>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
-                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Sem Compras</h3>
+                <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Sem Compras</h3>
                 <p className="text-3xl font-bold text-slate-400 dark:text-slate-500">
                   {relatorioClientes.clientesSemCompras}
                 </p>
@@ -1853,7 +1853,7 @@ export default function RelatoriosPage() {
                       {clientes.filter(cliente => 
                         cliente.nome.toLowerCase().includes(buscaCliente.toLowerCase())
                       ).length === 0 && (
-                        <p className="text-center text-slate-500 dark:text-slate-400 py-3 text-sm">
+                        <p className="text-center text-slate-500 dark:text-white py-3 text-sm">
                           Nenhum cliente encontrado
                         </p>
                       )}
@@ -1952,7 +1952,7 @@ export default function RelatoriosPage() {
                       {produtos.filter(produto => 
                         produto.nome.toLowerCase().includes(buscaProduto.toLowerCase())
                       ).length === 0 && (
-                        <p className="text-center text-slate-500 dark:text-slate-400 py-3 text-sm">
+                        <p className="text-center text-slate-500 dark:text-white py-3 text-sm">
                           Nenhum produto encontrado
                         </p>
                       )}

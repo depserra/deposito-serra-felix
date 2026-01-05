@@ -132,6 +132,7 @@ export const gerarTabelaVendas = (doc, yPosition, vendas, produtos, totalVendas)
         tableData.push([
           index === 0 ? formatarData(new Date(venda.dataVenda)) : '',
           index === 0 ? venda.codigoVenda || '-' : '',
+          index === 0 ? venda.clienteNome || '-' : '',
           produto?.fornecedor || '-',
           produto?.nome || item.produto || '-',
           produto?.categoria || '-',
@@ -144,6 +145,7 @@ export const gerarTabelaVendas = (doc, yPosition, vendas, produtos, totalVendas)
       tableData.push([
         formatarData(new Date(venda.dataVenda)),
         venda.codigoVenda || '-',
+        venda.clienteNome || '-',
         '-',
         '-',
         '-',
@@ -156,20 +158,21 @@ export const gerarTabelaVendas = (doc, yPosition, vendas, produtos, totalVendas)
   
   autoTable(doc, {
     startY: yPosition,
-    head: [['Data', 'Nº Venda', 'Fornecedor', 'Produto', 'Categoria', 'Qtd', 'Valor Unit.', 'Valor Total']],
+    head: [['Data', 'Nº Venda', 'Cliente', 'Fornecedor', 'Produto', 'Categoria', 'Qtd', 'Valor Unit.', 'Total']],
     body: tableData,
-    foot: [['', '', '', '', '', '', 'Total', `R$ ${formatarMoeda(totalVendas)}`]],
+    foot: [['', '', '', '', '', '', '', 'Total', `R$ ${formatarMoeda(totalVendas)}`]],
     theme: 'grid',
     ...TABLE_STYLES,
     columnStyles: {
       0: { cellWidth: 18, halign: 'center' },
-      1: { cellWidth: 18, halign: 'center' },
-      2: { cellWidth: 28, halign: 'left' },
-      3: { cellWidth: 35, halign: 'left' },
-      4: { cellWidth: 25, halign: 'center' },
-      5: { cellWidth: 12, halign: 'center' },
-      6: { cellWidth: 22, halign: 'right' },
-      7: { cellWidth: 22, halign: 'right' }
+      1: { cellWidth: 17, halign: 'center' },
+      2: { cellWidth: 25, halign: 'left' },
+      3: { cellWidth: 22, halign: 'left' },
+      4: { cellWidth: 30, halign: 'left' },
+      5: { cellWidth: 20, halign: 'center' },
+      6: { cellWidth: 10, halign: 'center' },
+      7: { cellWidth: 20, halign: 'right' },
+      8: { cellWidth: 20, halign: 'right' }
     }
   });
   

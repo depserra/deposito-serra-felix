@@ -187,7 +187,7 @@ export default function VendasPage() {
       <div className="space-y-8">
         {/* Header */}
         <div className="mb-8">
-          <p className="text-slate-600 dark:text-slate-400">Gerencie suas vendas de forma simples e eficiente</p>
+          <p className="text-slate-600 dark:text-white">Gerencie suas vendas de forma simples e eficiente</p>
         </div>
 
         {/* Controles de busca e filtros */}
@@ -269,7 +269,7 @@ export default function VendasPage() {
         ) : error ? (
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
             <div className="text-red-500 font-medium mb-2">Erro ao carregar vendas</div>
-            <p className="text-slate-600 dark:text-slate-400 mb-4">{error}</p>
+            <p className="text-slate-600 dark:text-white mb-4">{error}</p>
             <button 
               onClick={() => listarVendas(debouncedSearchTerm, statusFiltro)}
               className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
@@ -402,7 +402,7 @@ export default function VendasPage() {
                         <span className="font-mono text-sm font-medium text-slate-900 dark:text-slate-100">
                           #{venda.codigoVenda}
                         </span>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <p className="text-sm text-slate-600 dark:text-white">
                           {new Date(venda.dataVenda).toLocaleDateString('pt-BR')}
                         </p>
                       </div>
@@ -466,21 +466,21 @@ export default function VendasPage() {
               {/* Informações principais */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Código da Venda</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Código da Venda</label>
                   <p className="text-lg font-semibold text-slate-900 dark:text-white">#{vendaDetalhes.codigoVenda}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Data da Venda</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Data da Venda</label>
                   <p className="text-lg font-medium text-slate-900 dark:text-white">
                     {new Date(vendaDetalhes.dataVenda).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Cliente</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Cliente</label>
                   <p className="text-lg font-medium text-slate-900 dark:text-white">{vendaDetalhes.clienteNome}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Status</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Status</label>
                   <span className={getStatusBadge(vendaDetalhes.status)}>
                     {getStatusIcon(vendaDetalhes.status)}
                     {formatarStatus(vendaDetalhes.status)}
@@ -488,7 +488,7 @@ export default function VendasPage() {
                 </div>
                 {vendaDetalhes.formaPagamento && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Forma de Pagamento</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Forma de Pagamento</label>
                     <p className="text-lg font-medium text-slate-900 dark:text-white capitalize">
                       {vendaDetalhes.formaPagamento.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                     </p>
@@ -503,10 +503,10 @@ export default function VendasPage() {
                   <table className="w-full">
                     <thead className="bg-slate-50 dark:bg-slate-700/50">
                       <tr>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Produto</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Quantidade</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Valor Unitário</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-slate-400">Subtotal</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Produto</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Quantidade</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Valor Unitário</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-slate-600 dark:text-white">Subtotal</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -606,7 +606,7 @@ export default function VendasPage() {
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
                   Excluir venda #{vendaParaExcluir?.codigoVenda}
                 </h3>
-                <p className="text-slate-600 dark:text-slate-400">
+                <p className="text-slate-600 dark:text-white">
                   Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita.
                 </p>
               </div>

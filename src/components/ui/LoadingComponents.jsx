@@ -106,7 +106,7 @@ export function LoadingSpinner({ size = 'md', text = 'Carregando...' }) {
   return (
     <div className="flex flex-col items-center justify-center p-8">
       <div className={`${sizeClasses[size]} animate-spin rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-orange-500 mb-3`}></div>
-      <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">{text}</p>
+      <p className="text-slate-600 dark:text-white text-sm font-medium">{text}</p>
     </div>
   );
 }
@@ -125,7 +125,7 @@ export function EmptyState({
         <Icon className="text-slate-400 dark:text-slate-500" size={24} />
       </div>
       <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">{title}</h3>
-      <p className="text-slate-600 dark:text-slate-400 mb-6 max-w-sm">{description}</p>
+      <p className="text-slate-600 dark:text-white mb-6 max-w-sm">{description}</p>
       {actionText && onAction && (
         <button
           onClick={onAction}

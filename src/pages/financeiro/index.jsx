@@ -113,7 +113,7 @@ export default function FinanceiroPage() {
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-1">Resumo Financeiro</h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Acompanhe suas vendas e despesas</p>
+              <p className="text-sm text-slate-600 dark:text-white">Acompanhe suas vendas e despesas</p>
             </div>
             
             <div className="flex flex-wrap gap-2">
@@ -150,11 +150,11 @@ export default function FinanceiroPage() {
                   </div>
                   <ArrowUpRight className="text-emerald-500" size={20} />
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total em Vendas</p>
+                <p className="text-sm text-slate-600 dark:text-white mb-1">Total em Vendas</p>
                 <p className="text-lg md:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
                   R$ {formatarMoeda(estatisticas.totalVendasPagas)}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                <p className="text-xs text-slate-500 dark:text-white mt-2">
                   {estatisticas.quantidadeVendasPagas} venda(s) paga(s)
                 </p>
               </div>
@@ -166,11 +166,11 @@ export default function FinanceiroPage() {
                     <Calendar className="text-amber-600 dark:text-amber-400" size={24} />
                   </div>
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Vendas Fiado</p>
+                <p className="text-sm text-slate-600 dark:text-white mb-1">Vendas Fiado</p>
                 <p className="text-lg md:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
                   R$ {formatarMoeda(estatisticas.totalVendasFiado)}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                <p className="text-xs text-slate-500 dark:text-white mt-2">
                   {estatisticas.quantidadeVendasFiado} venda(s) pendente(s)
                 </p>
               </div>
@@ -183,11 +183,11 @@ export default function FinanceiroPage() {
                   </div>
                   <ArrowDownRight className="text-red-500" size={20} />
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total em Compras</p>
+                <p className="text-sm text-slate-600 dark:text-white mb-1">Total em Compras</p>
                 <p className="text-lg md:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
                   R$ {formatarMoeda(estatisticas.totalCompras)}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                <p className="text-xs text-slate-500 dark:text-white mt-2">
                   {estatisticas.quantidadeCompras} compra(s)
                 </p>
               </div>
@@ -206,7 +206,7 @@ export default function FinanceiroPage() {
                     } size={24} />
                   </div>
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
+                <p className="text-sm text-slate-600 dark:text-white mb-1">
                   {estatisticas.lucro >= 0 ? 'Lucro' : 'Prejuízo'}
                 </p>
                 <p className={`text-lg md:text-xl lg:text-2xl font-bold whitespace-nowrap ${
@@ -216,7 +216,7 @@ export default function FinanceiroPage() {
                 }`}>
                   R$ {formatarMoeda(Math.abs(estatisticas.lucro))}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                <p className="text-xs text-slate-500 dark:text-white mt-2">
                   {estatisticas.lucro >= 0 ? 'Positivo' : 'Negativo'}
                 </p>
               </div>
@@ -228,11 +228,11 @@ export default function FinanceiroPage() {
                     <ShoppingCart className="text-purple-600 dark:text-purple-400" size={24} />
                   </div>
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Ticket Médio</p>
+                <p className="text-sm text-slate-600 dark:text-white mb-1">Ticket Médio</p>
                 <p className="text-lg md:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
                   R$ {formatarMoeda(estatisticas.ticketMedio)}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                <p className="text-xs text-slate-500 dark:text-white mt-2">
                   Por venda
                 </p>
               </div>
@@ -267,7 +267,7 @@ export default function FinanceiroPage() {
                           <p className={`text-sm ${
                             isFiado 
                               ? 'text-orange-600 dark:text-orange-400 font-medium' 
-                              : 'text-slate-500 dark:text-slate-400'
+                              : 'text-slate-500 dark:text-white'
                           }`}>
                             {venda.dataVenda ? new Date(venda.dataVenda).toLocaleDateString('pt-BR') : '-'}
                             {isFiado && ' • Fiado'}
@@ -284,7 +284,7 @@ export default function FinanceiroPage() {
                     );
                   })}
                   {dadosFiltrados.vendas.length === 0 && (
-                    <p className="text-center text-slate-500 dark:text-slate-400 py-4">
+                    <p className="text-center text-slate-500 dark:text-white py-4">
                       Nenhuma venda no período
                     </p>
                   )}
@@ -306,7 +306,7 @@ export default function FinanceiroPage() {
                         <p className="font-medium text-slate-900 dark:text-slate-100">
                           {compra.fornecedor || 'Fornecedor não informado'}
                         </p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                        <p className="text-sm text-slate-500 dark:text-white">
                           {compra.dataCompra ? new Date(compra.dataCompra).toLocaleDateString('pt-BR') : '-'}
                         </p>
                       </div>
@@ -316,7 +316,7 @@ export default function FinanceiroPage() {
                     </div>
                   ))}
                   {dadosFiltrados.compras.length === 0 && (
-                    <p className="text-center text-slate-500 dark:text-slate-400 py-4">
+                    <p className="text-center text-slate-500 dark:text-white py-4">
                       Nenhuma compra no período
                     </p>
                   )}

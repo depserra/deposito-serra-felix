@@ -140,6 +140,7 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
             <option value="sc">Saco (sc)</option>
             <option value="cx">Caixa (cx)</option>
             <option value="pç">Peça (pç)</option>
+            <option value="milh">Milheiro (milh)</option>
           </select>
           {errors.unidade && (
             <p className="mt-1 text-sm text-red-500">{errors.unidade.message}</p>
@@ -156,6 +157,7 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
           <input
             type="number"
             {...register('quantidade')}
+            onWheel={(e) => e.target.blur()}
             className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
             placeholder=""
           />
@@ -171,6 +173,7 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
           <input
             type="number"
             {...register('estoqueMinimo')}
+            onWheel={(e) => e.target.blur()}
             className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
             placeholder=""
           />
@@ -202,11 +205,12 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
             Preço de Compra *
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">R$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-white">R$</span>
             <input
               type="number"
               step="any"
               {...register('precoCompra')}
+              onWheel={(e) => e.target.blur()}
               className="w-full pl-10 pr-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
               placeholder=""
             />
@@ -221,11 +225,12 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
             Preço de Venda *
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">R$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-white">R$</span>
             <input
               type="number"
               step="any"
               {...register('precoVenda')}
+              onWheel={(e) => e.target.blur()}
               className="w-full pl-10 pr-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
               placeholder=""
             />
