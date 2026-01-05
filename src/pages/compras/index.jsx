@@ -1,28 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useCompras } from '../../hooks/useCompras';
+import { useDebounce } from '../../hooks/useDebounce';
 import PageLayout from '../../components/layout-new/PageLayout';
 import CompraForm from '../../components/forms/CompraForm';
 import Modal from '../../components/modals/Modal';
 import { Plus, Search, Edit, Trash2, ShoppingBag, Package, Eye } from 'lucide-react';
 import { LoadingSpinner, EmptyState } from '../../components/ui/LoadingComponents';
 import { formatCurrency } from '../../utils/formatters';
-
-// Hook para debounce
-function useDebounce(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
 
 export default function ComprasPage() {
   const [showForm, setShowForm] = useState(false);

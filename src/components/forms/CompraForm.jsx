@@ -124,6 +124,7 @@ export default function CompraForm({ onSubmit, initialData }) {
   const selecionarProduto = (index, produto) => {
     setValue(`itens.${index}.nomeProduto`, produto.nome);
     setValue(`itens.${index}.categoria`, produto.categoria || '');
+    setValue(`itens.${index}.unidade`, produto.unidade || 'un');
     setValue(`itens.${index}.valorCompra`, produto.precoCompra || produto.valorCompra || '');
     setValue(`itens.${index}.valorVenda`, produto.precoVenda || produto.valorVenda || '');
     setProdutoSugestoes(prev => ({ ...prev, [index]: [] }));

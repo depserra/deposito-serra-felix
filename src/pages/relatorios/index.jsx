@@ -30,10 +30,12 @@ export default function RelatoriosPage() {
   const { produtos, listarProdutos } = useEstoque();
   const { clientes, listarClientes } = useClientes();
   
-  const [periodoSelecionado, setPeriodoSelecionado] = useState('mes');
+  const [periodoSelecionado, setPeriodoSelecionado] = useState('todos');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [relatorioAtivo, setRelatorioAtivo] = useState('vendas');
+  const [filtroCompras, setFiltroCompras] = useState({ periodo: 'todos', fornecedor: '', produto: '' });
+  const [filtroVendas, setFiltroVendas] = useState({ periodo: 'todos', cliente: '', produto: '' });
   const [showModalPersonalizado, setShowModalPersonalizado] = useState(false);
   
   // Estados do filtro personalizado
@@ -70,8 +72,8 @@ export default function RelatoriosPage() {
   );
 
   // Relatórios
-  const relatorioVendas = useRelatorioVendas(vendas, dadosFiltrados, produtos);
-  const relatorioCompras = useRelatorioCompras(dadosFiltrados, produtos);
+  const relatorioVendas = useRelatorioVendas(vendas, produtos, filtroVendas);
+  const relatorioCompras = useRelatorioCompras(compras, produtos, filtroCompras);
   const relatorioEstoque = useRelatorioEstoque(produtos);
   
   const relatorioClientes = useMemo(() => {
@@ -83,26 +85,34 @@ export default function RelatoriosPage() {
 
   // Exportar PDF
   const handleExportarRelatorio = async () => {
-    const { inicio, fim } = calcularPeriodo(periodoSelecionado);
-    const hoje = new Date();
-    
-    let dados = [];
-    if (relatorioAtivo === 'vendas') {
-      dados = dadosFiltrados.vendasFiltradas || [];
-    } else if (relatorioAtivo === 'compras') {
-      dados = dadosFiltrados.comprasFiltradas || [];
-    } else if (relatorioAtivo === 'estoque') {
-      dados = produtos || [];
+    try {
+      const { inicio, fim } = calcularPeriodo(periodoSelecionado);
+      const hoje = new Date();
+      
+      let dados = [];
+      if (relatorioAtivo === 'vendas') {
+        dados = dadosFiltrados.vendasFiltradas || [];
+      } else if (relatorioAtivo === 'compras') {
+        dados = dadosFiltrados.comprasFiltradas || [];
+      } else if (relatorioAtivo === 'estoque') {
+        dados = produtos || [];
+      } else if (relatorioAtivo === 'clientes') {
+        dados = clientes || [];
+      }
+      
+      await exportarPDF({
+        tipoRelatorio: relatorioAtivo,
+        dados,
+        produtos,
+        vendas,
+        dataInicio: inicio,
+        dataFim: fim,
+        nomeArquivo: `relatorio_${relatorioAtivo}_${hoje.getTime()}.pdf`
+      });
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      alert('Erro ao gerar PDF: ' + error.message);
     }
-    
-    await exportarPDF({
-      tipoRelatorio: relatorioAtivo,
-      dados,
-      produtos,
-      dataInicio: inicio,
-      dataFim: fim,
-      nomeArquivo: `relatorio_${relatorioAtivo}_${hoje.getTime()}.pdf`
-    });
   };
 
   return (
@@ -122,6 +132,7 @@ export default function RelatoriosPage() {
                 onChange={(e) => setPeriodoSelecionado(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
+                <option value="todos">Todos os Períodos</option>
                 <option value="hoje">Hoje</option>
                 <option value="semana">Última Semana</option>
                 <option value="mes">Este Mês</option>
@@ -229,6 +240,53 @@ export default function RelatoriosPage() {
         {/* Conteúdo do Relatório - Vendas */}
         {relatorioAtivo === 'vendas' && (
           <div className="space-y-6">
+            {/* Filtros de Vendas */}
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Filtros de Vendas</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Período
+                  </label>
+                  <select
+                    value={filtroVendas.periodo}
+                    onChange={(e) => setFiltroVendas({...filtroVendas, periodo: e.target.value})}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="todos">Todos os Períodos</option>
+                    <option value="hoje">Hoje</option>
+                    <option value="semana">Última Semana</option>
+                    <option value="mes">Este Mês</option>
+                    <option value="ano">Este Ano</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Cliente
+                  </label>
+                  <input
+                    type="text"
+                    value={filtroVendas.cliente}
+                    onChange={(e) => setFiltroVendas({...filtroVendas, cliente: e.target.value})}
+                    placeholder="Buscar cliente..."
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Produto
+                  </label>
+                  <input
+                    type="text"
+                    value={filtroVendas.produto}
+                    onChange={(e) => setFiltroVendas({...filtroVendas, produto: e.target.value})}
+                    placeholder="Buscar produto..."
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
                 <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Total de Vendas</h3>
@@ -283,6 +341,53 @@ export default function RelatoriosPage() {
         {/* Conteúdo do Relatório - Compras */}
         {relatorioAtivo === 'compras' && (
           <div className="space-y-6">
+            {/* Filtros de Compras */}
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Filtros de Compras</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Período
+                  </label>
+                  <select
+                    value={filtroCompras.periodo}
+                    onChange={(e) => setFiltroCompras({...filtroCompras, periodo: e.target.value})}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="todos">Todos os Períodos</option>
+                    <option value="hoje">Hoje</option>
+                    <option value="semana">Última Semana</option>
+                    <option value="mes">Este Mês</option>
+                    <option value="ano">Este Ano</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Fornecedor
+                  </label>
+                  <input
+                    type="text"
+                    value={filtroCompras.fornecedor}
+                    onChange={(e) => setFiltroCompras({...filtroCompras, fornecedor: e.target.value})}
+                    placeholder="Buscar fornecedor..."
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Produto
+                  </label>
+                  <input
+                    type="text"
+                    value={filtroCompras.produto}
+                    onChange={(e) => setFiltroCompras({...filtroCompras, produto: e.target.value})}
+                    placeholder="Buscar produto..."
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-6">
                 <h3 className="text-sm font-medium text-slate-600 dark:text-white mb-2">Total de Compras</h3>

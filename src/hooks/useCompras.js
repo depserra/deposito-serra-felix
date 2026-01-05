@@ -132,22 +132,25 @@ export function useCompras() {
           const produtoExistente = produtosMap.get(item.nomeProduto);
 
           if (produtoExistente) {
-            // Produto existe - atualizar quantidade com increment
+            // Produto existe - atualizar apenas quantidade com increment
+            // NÃO atualiza o preço automaticamente - cada compra mantém seu histórico de preços
             const quantidadeComprada = parseFloat(item.quantidade) || 0;
 
             batch.update(doc(db, 'produtos', produtoExistente.id), {
               quantidade: increment(quantidadeComprada),
-              valorUnitario: parseFloat(item.valorUnitario) || produtoExistente.valorUnitario,
               atualizadoEm: new Date()
             });
 
-            // Registrar movimentação de estoque
+            // Registrar movimentação de estoque com o preço da compra
             const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
             batch.set(movimentacaoRef, {
               produtoId: produtoExistente.id,
               produtoNome: item.nomeProduto,
               tipo: 'entrada',
               quantidade: quantidadeComprada,
+              valorCompra: parseFloat(item.valorCompra) || 0,
+              valorVenda: parseFloat(item.valorVenda) || 0,
+              fornecedor: dados.fornecedor || '',
               motivo: 'Compra',
               compraId: compraRef.id,
               codigoCompra: codigoCompra,
@@ -160,7 +163,9 @@ export function useCompras() {
               nome: item.nomeProduto,
               categoria: item.categoria || 'Geral',
               quantidade: parseFloat(item.quantidade) || 0,
-              valorUnitario: parseFloat(item.valorUnitario) || 0,
+              precoCompra: parseFloat(item.valorCompra) || 0,
+              precoVenda: parseFloat(item.valorVenda) || 0,
+              unidade: item.unidade || 'un',
               criadoEm: new Date(),
               atualizadoEm: new Date()
             });
@@ -172,6 +177,9 @@ export function useCompras() {
               produtoNome: item.nomeProduto,
               tipo: 'entrada',
               quantidade: parseFloat(item.quantidade) || 0,
+              valorCompra: parseFloat(item.valorCompra) || 0,
+              valorVenda: parseFloat(item.valorVenda) || 0,
+              fornecedor: dados.fornecedor || '',
               motivo: 'Compra (Primeiro cadastro)',
               compraId: compraRef.id,
               codigoCompra: codigoCompra,

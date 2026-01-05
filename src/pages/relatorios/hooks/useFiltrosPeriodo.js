@@ -7,6 +7,9 @@ export function useFiltrosPeriodo(vendas, compras, periodoSelecionado, dataInici
     let inicio = new Date();
 
     switch(periodo) {
+      case 'todos':
+        // Retorna uma data muito antiga para incluir tudo
+        return { inicio: new Date(2000, 0, 1), fim: hoje };
       case 'hoje':
         inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
         break;
@@ -23,9 +26,9 @@ export function useFiltrosPeriodo(vendas, compras, periodoSelecionado, dataInici
         if (dataInicio && dataFim) {
           return { inicio: new Date(dataInicio), fim: new Date(dataFim) };
         }
-        return { inicio: new Date(0), fim: hoje };
+        return { inicio: new Date(2000, 0, 1), fim: hoje };
       default:
-        inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        return { inicio: new Date(2000, 0, 1), fim: hoje };
     }
 
     return { inicio, fim: hoje };

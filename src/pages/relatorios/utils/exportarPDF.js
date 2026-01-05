@@ -7,7 +7,8 @@ import {
   adicionarRodape,
   gerarTabelaVendas,
   gerarTabelaCompras,
-  gerarTabelaEstoque
+  gerarTabelaEstoque,
+  gerarTabelaClientes
 } from './pdfGenerator';
 
 export const exportarPDF = async ({
@@ -32,6 +33,8 @@ export const exportarPDF = async ({
     yPosition = await gerarRelatorioCompras(doc, yPosition, dados, produtos);
   } else if (tipoRelatorio === 'estoque') {
     yPosition = await gerarRelatorioEstoque(doc, yPosition, dados);
+  } else if (tipoRelatorio === 'clientes') {
+    yPosition = await gerarRelatorioClientes(doc, yPosition, dados);
   }
   
   // Notas e rodapé
@@ -134,3 +137,34 @@ const gerarRelatorioEstoque = async (doc, yPosition, produtos) => {
   
   return yPosition;
 };
+
+// Relatório de Clientes
+const gerarRelatorioClientes = async (doc, yPosition, clientes) => {
+  const totalClientes = clientes.length;
+  const clientesAtivos = clientes.filter(c => c.ativo !== false).length;
+  const clientesInativos = totalClientes - clientesAtivos;
+  
+  // Cards
+  const cards = [
+    { label: 'Total de Clientes', valor: totalClientes.toString() },
+    { label: 'Clientes Ativos', valor: clientesAtivos.toString() },
+    { label: 'Clientes Inativos', valor: clientesInativos.toString() },
+    { label: 'Taxa de Ativos', valor: `${totalClientes > 0 ? ((clientesAtivos / totalClientes) * 100).toFixed(1) : 0}%` }
+  ];
+  
+  yPosition = adicionarCards(doc, yPosition, cards);
+  
+  // Título da seção
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(249, 115, 22);
+  doc.text('Lista de Clientes', 15, yPosition);
+  doc.setTextColor(0, 0, 0);
+  yPosition += 5;
+  
+  // Tabela
+  yPosition = gerarTabelaClientes(doc, yPosition, clientes);
+  
+  return yPosition;
+};
+

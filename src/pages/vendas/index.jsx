@@ -3,29 +3,13 @@ import { useLocation } from 'react-router-dom';
 import { useVendas } from '../../hooks/useVendas';
 import { useClientes } from '../../hooks/useClientes';
 import { useEstoque } from '../../hooks/useEstoque';
+import { useDebounce } from '../../hooks/useDebounce';
 import PageLayout from '../../components/layout-new/PageLayout';
 import VendaForm from '../../components/forms/VendaForm';
 import Modal from '../../components/modals/Modal';
 import { Plus, Search, Edit, Trash2, FileText, CheckCircle, Clock, XCircle, Filter, Users, Eye } from 'lucide-react';
 import { VendasSkeleton, LoadingSpinner, EmptyState } from '../../components/ui/LoadingComponents';
 import { formatCurrency } from '../../utils/formatters';
-
-// Hook para debounce
-function useDebounce(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
 
 export default function VendasPage() {
   const location = useLocation();
@@ -105,16 +89,11 @@ export default function VendasPage() {
         }))
       };
 
-      console.log('Dados processados:', dadosProcessados);
-
       if (vendaParaEditar) {
-        console.log('Atualizando venda:', vendaParaEditar.id);
         await atualizarVenda(vendaParaEditar.id, dadosProcessados);
         setVendaParaEditar(null);
       } else {
-        console.log('Adicionando nova venda');
-        const novaVenda = await adicionarVenda(dadosProcessados);
-        console.log('Nova venda adicionada:', novaVenda);
+        await adicionarVenda(dadosProcessados);
       }
 
       // Limpa os filtros para mostrar todas as vendas, incluindo a nova

@@ -2,29 +2,13 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClientes } from '../../hooks/useClientes';
 import { useEstoque } from '../../hooks/useEstoque';
+import { useDebounce } from '../../hooks/useDebounce';
 import PageLayout from '../../components/layout-new/PageLayout';
 import ClienteForm from '../../components/forms/ClienteForm';
 import Modal from '../../components/modals/Modal';
 import { Plus, Search, Edit, Trash2, History, Users, X, Eye } from 'lucide-react';
 import { ClientesSkeleton, LoadingSpinner, EmptyState } from '../../components/ui/LoadingComponents';
 import { useVendas } from '../../hooks/useVendas';
-
-// Hook para debounce
-function useDebounce(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
 
 export default function ClientesPage() {
   const navigate = useNavigate();

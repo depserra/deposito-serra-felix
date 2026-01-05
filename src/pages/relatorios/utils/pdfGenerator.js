@@ -181,18 +181,38 @@ export const gerarTabelaVendas = (doc, yPosition, vendas, produtos, totalVendas)
 
 // Gera tabela de compras
 export const gerarTabelaCompras = (doc, yPosition, compras, produtos, totalCompras, quantidadeTotal) => {
-  const tableData = compras.map(compra => {
-    const produto = produtos.find(p => p.id === compra.produtoId);
-    return [
-      formatarData(new Date(compra.dataCompra)),
-      compra.codigoCompra || '-',
-      compra.fornecedor || '-',
-      produto?.nome || compra.nomeProduto || '-',
-      produto?.categoria || '-',
-      compra.quantidade || 0,
-      `R$ ${formatarMoeda(compra.valorCompra || 0)}`,
-      `R$ ${formatarMoeda(compra.valorTotal || 0)}`
-    ];
+  const tableData = [];
+  
+  compras.forEach(compra => {
+    if (compra.itens && compra.itens.length > 0) {
+      compra.itens.forEach((item, index) => {
+        const produto = produtos.find(p => p.nome === item.nomeProduto);
+        
+        tableData.push([
+          index === 0 ? formatarData(new Date(compra.dataCompra)) : '',
+          index === 0 ? compra.codigoCompra || '-' : '',
+          index === 0 ? compra.fornecedor || '-' : '',
+          item.nomeProduto || '-',
+          item.categoria || produto?.categoria || '-',
+          item.quantidade || 0,
+          `R$ ${formatarMoeda(item.valorCompra || item.valorUnitario || 0)}`,
+          index === 0 ? `R$ ${formatarMoeda(compra.valorTotal || 0)}` : ''
+        ]);
+      });
+    } else {
+      // Compra sem itens (dados antigos)
+      const produto = produtos.find(p => p.id === compra.produtoId);
+      tableData.push([
+        formatarData(new Date(compra.dataCompra)),
+        compra.codigoCompra || '-',
+        compra.fornecedor || '-',
+        produto?.nome || compra.nomeProduto || '-',
+        produto?.categoria || '-',
+        compra.quantidade || 0,
+        `R$ ${formatarMoeda(compra.valorCompra || 0)}`,
+        `R$ ${formatarMoeda(compra.valorTotal || 0)}`
+      ]);
+    }
   });
   
   autoTable(doc, {
@@ -251,3 +271,32 @@ export const gerarTabelaEstoque = (doc, yPosition, produtos, valorTotal, quantid
   
   return doc.lastAutoTable.finalY + 10;
 };
+
+// Gera tabela de clientes
+export const gerarTabelaClientes = (doc, yPosition, clientes) => {
+  const tableData = clientes.map(cliente => [
+    cliente.nome || '-',
+    cliente.telefone || '-',
+    cliente.email || '-',
+    cliente.endereco || '-',
+    cliente.ativo !== false ? 'Ativo' : 'Inativo'
+  ]);
+  
+  autoTable(doc, {
+    startY: yPosition,
+    head: [['Nome', 'Telefone', 'E-mail', 'Endereço', 'Status']],
+    body: tableData,
+    theme: 'grid',
+    ...TABLE_STYLES,
+    columnStyles: {
+      0: { cellWidth: 45, halign: 'left' },
+      1: { cellWidth: 30, halign: 'center' },
+      2: { cellWidth: 50, halign: 'left' },
+      3: { cellWidth: 45, halign: 'left' },
+      4: { cellWidth: 20, halign: 'center' }
+    }
+  });
+  
+  return doc.lastAutoTable.finalY + 10;
+};
+
