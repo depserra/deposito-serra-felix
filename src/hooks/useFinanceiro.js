@@ -29,28 +29,42 @@ export function useFinanceiro() {
       setError(null);
 
       const contasRef = collection(db, 'contasReceber');
-      let queryRef = query(contasRef, orderBy('dataVencimento', 'asc'));
-
-      // Aplicar filtros
-      if (filtros.status) {
-        queryRef = query(queryRef, where('status', '==', filtros.status));
+      
+      // Se tiver vendaId, usar query específica SEM orderBy para evitar erro de índice
+      if (filtros.vendaId) {
+        const queryRef = query(contasRef, where('vendaId', '==', filtros.vendaId));
+        const snapshot = await getDocs(queryRef);
+        const contasData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        // Ordenar no cliente
+        contasData.sort((a, b) => (a.numeroParcela || 0) - (b.numeroParcela || 0));
+        setContasReceber(contasData);
+        return contasData;
       }
-      if (filtros.clienteId) {
-        queryRef = query(queryRef, where('clienteId', '==', filtros.clienteId));
-      }
-      if (filtros.dataInicio && filtros.dataFim) {
-        queryRef = query(
-          queryRef,
-          where('dataVencimento', '>=', filtros.dataInicio),
-          where('dataVencimento', '<=', filtros.dataFim)
-        );
-      }
-
-      const snapshot = await getDocs(queryRef);
-      const contasData = snapshot.docs.map(doc => ({
+      
+      // Caso contrário, buscar todas sem filtros complexos
+      const snapshot = await getDocs(contasRef);
+      let contasData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+      
+      // Aplicar filtros no cliente
+      if (filtros.status) {
+        contasData = contasData.filter(c => c.status === filtros.status);
+      }
+      if (filtros.clienteId) {
+        contasData = contasData.filter(c => c.clienteId === filtros.clienteId);
+      }
+      
+      // Ordenar por data de vencimento
+      contasData.sort((a, b) => {
+        const dataA = a.dataVencimento instanceof Date ? a.dataVencimento : a.dataVencimento?.toDate?.() || new Date(a.dataVencimento);
+        const dataB = b.dataVencimento instanceof Date ? b.dataVencimento : b.dataVencimento?.toDate?.() || new Date(b.dataVencimento);
+        return dataA - dataB;
+      });
 
       setContasReceber(contasData);
       return contasData;
@@ -96,24 +110,15 @@ export function useFinanceiro() {
       setLoading(true);
       
       const dadosRecebimento = {
+        status: dados.status || 'pago',
+        dataPagamento: dados.dataPagamento || new Date(),
         valorRecebido: parseFloat(dados.valorRecebido) || 0,
-        dataRecebimento: dados.dataRecebimento || new Date(),
         formaPagamento: dados.formaPagamento || '',
         observacoes: dados.observacoes || '',
-        status: dados.valorRecebido >= dados.valorTotal ? 'recebida' : 'parcial',
         atualizadoEm: serverTimestamp()
       };
 
       await updateDoc(doc(db, 'contasReceber', contaId), dadosRecebimento);
-
-      // Registrar no fluxo de caixa
-      await adicionarMovimentoCaixa({
-        tipo: 'entrada',
-        valor: parseFloat(dados.valorRecebido),
-        descricao: `Recebimento - ${dados.descricao || 'Conta a receber'}`,
-        categoria: 'recebimento',
-        contaReceberRef: contaId
-      });
 
       return dadosRecebimento;
     } catch (err) {

@@ -159,7 +159,69 @@ export function useVendas() {
         }
       }
 
-      // 3. Executar todas as operações
+      // 3. Se o status for parcelado, criar registros no financeiro
+      if (dados.status === 'parcelado' && dados.parcelamento) {
+        const { numeroParcelas, diaVencimento, valorParcela } = dados.parcelamento;
+        
+        if (numeroParcelas && diaVencimento && valorParcela) {
+          const hoje = new Date();
+          
+          for (let i = 0; i < numeroParcelas; i++) {
+            // Calcular data de vencimento da parcela - sempre adiciona i meses a partir de hoje
+            const dataVencimento = new Date(hoje.getFullYear(), hoje.getMonth() + i, diaVencimento);
+            
+            // Se a primeira parcela já passou, ajustar todas para começar do próximo mês
+            if (i === 0 && dataVencimento < hoje) {
+              // Ajustar o mês inicial
+              for (let j = 0; j < numeroParcelas; j++) {
+                const dataVenc = new Date(hoje.getFullYear(), hoje.getMonth() + j + 1, diaVencimento);
+                const contaRef = doc(collection(db, 'contasReceber'));
+                const isPrimeiraParcela = j === 0;
+                
+                batch.set(contaRef, {
+                  vendaId: vendaRef.id,
+                  clienteId: dados.clienteId,
+                  clienteNome: dados.clienteNome || '',
+                  codigoVenda: codigoVenda,
+                  descricao: `Parcela ${j + 1}/${numeroParcelas} - Venda #${codigoVenda}`,
+                  valor: Math.round(valorParcela * 100) / 100,
+                  dataVencimento: dataVenc,
+                  dataPagamento: isPrimeiraParcela ? new Date() : null,
+                  status: isPrimeiraParcela ? 'pago' : 'pendente',
+                  numeroParcela: j + 1,
+                  totalParcelas: numeroParcelas,
+                  criadoEm: new Date(),
+                  atualizadoEm: new Date()
+                });
+              }
+              // Sair do loop externo
+              break;
+            }
+            
+            // Caso contrário, criar normalmente
+            const contaRef = doc(collection(db, 'contasReceber'));
+            const isPrimeiraParcela = i === 0;
+            
+            batch.set(contaRef, {
+              vendaId: vendaRef.id,
+              clienteId: dados.clienteId,
+              clienteNome: dados.clienteNome || '',
+              codigoVenda: codigoVenda,
+              descricao: `Parcela ${i + 1}/${numeroParcelas} - Venda #${codigoVenda}`,
+              valor: Math.round(valorParcela * 100) / 100,
+              dataVencimento: dataVencimento,
+              dataPagamento: isPrimeiraParcela ? new Date() : null,
+              status: isPrimeiraParcela ? 'pago' : 'pendente',
+              numeroParcela: i + 1,
+              totalParcelas: numeroParcelas,
+              criadoEm: new Date(),
+              atualizadoEm: new Date()
+            });
+          }
+        }
+      }
+
+      // 4. Executar todas as operações
       await batch.commit();
 
       // Invalidar cache
@@ -282,11 +344,25 @@ export function useVendas() {
       
       // 4. Atualizar a venda
       const vendaData = {
-        ...dados,
         valorTotal: Math.round((dados.valorTotal || 0) * 100) / 100,
-        dataVenda: stringParaDataLocal(dados.dataVenda),
         atualizadoEm: new Date()
       };
+      
+      // Processar campos opcionais
+      if (dados.status) vendaData.status = dados.status;
+      if (dados.clienteId) vendaData.clienteId = dados.clienteId;
+      if (dados.clienteNome) vendaData.clienteNome = dados.clienteNome;
+      if (dados.observacoes !== undefined) vendaData.observacoes = dados.observacoes;
+      if (dados.itens) vendaData.itens = dados.itens;
+      
+      // Processar dataVenda apenas se for string
+      if (dados.dataVenda) {
+        if (typeof dados.dataVenda === 'string') {
+          vendaData.dataVenda = stringParaDataLocal(dados.dataVenda);
+        } else if (dados.dataVenda instanceof Date) {
+          vendaData.dataVenda = dados.dataVenda;
+        }
+      }
       
       batch.update(vendaRef, vendaData);
       
@@ -357,10 +433,25 @@ export function useVendas() {
           }
         }
         
-        // 3. Remover a venda
+        // 3. Remover parcelas associadas à venda (independente do status)
+        try {
+          const parcelasQuery = query(
+            collection(db, 'contasReceber'),
+            where('vendaId', '==', id)
+          );
+          const parcelasSnap = await getDocs(parcelasQuery);
+          
+          parcelasSnap.forEach((parcelaDoc) => {
+            batch.delete(doc(db, 'contasReceber', parcelaDoc.id));
+          });
+        } catch (error) {
+          console.warn('Erro ao buscar parcelas para exclusão:', error);
+        }
+        
+        // 4. Remover a venda
         batch.delete(vendaRef);
         
-        // 4. Executar todas as operações
+        // 5. Executar todas as operações
         await batch.commit();
         
         // Invalidar cache

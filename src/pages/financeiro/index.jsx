@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import PageLayout from '../../components/layout-new/PageLayout';
 import { useVendas } from '../../hooks/useVendas';
 import { useCompras } from '../../hooks/useCompras';
+import { useFinanceiro } from '../../hooks/useFinanceiro';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -26,13 +27,16 @@ export default function FinanceiroPage() {
   const [periodo, setPeriodo] = useState('mes'); // hoje, semana, mes, ano
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
+  const [modalAberto, setModalAberto] = useState(null); // 'recebido', 'aReceber', 'despesas', 'saldo'
   
   const { vendas, loading: loadingVendas, listarVendas } = useVendas();
   const { compras, loading: loadingCompras, listarCompras } = useCompras();
+  const { contasReceber, loading: loadingFinanceiro, listarContasReceber } = useFinanceiro();
 
   useEffect(() => {
     listarVendas();
     listarCompras();
+    listarContasReceber();
   }, []);
 
   // Calcular datas baseado no período
@@ -52,6 +56,10 @@ export default function FinanceiroPage() {
         break;
       case 'ano':
         inicio.setFullYear(hoje.getFullYear() - 1);
+        break;
+      case 'todos':
+        // Mostrar todos os registros (desde 2000)
+        inicio = new Date(2000, 0, 1);
         break;
       case 'personalizado':
         return { inicio: dataInicio ? new Date(dataInicio) : inicio, fim: dataFim ? new Date(dataFim) : hoje };
@@ -75,9 +83,15 @@ export default function FinanceiroPage() {
       const dataCompra = c.dataCompra instanceof Date ? c.dataCompra : new Date(c.dataCompra);
       return dataCompra >= inicio && dataCompra <= fim;
     });
+
+    const contasReceberFiltradas = (contasReceber || []).filter(c => {
+      // Usar data de criação ao invés de vencimento para filtrar por período
+      const dataCriacao = c.criadoEm instanceof Date ? c.criadoEm : c.criadoEm?.toDate?.() || new Date(c.criadoEm);
+      return dataCriacao >= inicio && dataCriacao <= fim;
+    });
     
-    return { vendas: vendasFiltradas, compras: comprasFiltradas };
-  }, [vendas, compras, periodo, dataInicio, dataFim]);
+    return { vendas: vendasFiltradas, compras: comprasFiltradas, contasReceber: contasReceberFiltradas };
+  }, [vendas, compras, contasReceber, periodo, dataInicio, dataFim]);
 
   // Calcular estatísticas
   const estatisticas = useMemo(() => {
@@ -85,25 +99,35 @@ export default function FinanceiroPage() {
     const vendasPagas = dadosFiltrados.vendas.filter(v => v.status === 'concluida');
     const vendasFiado = dadosFiltrados.vendas.filter(v => v.status === 'em_andamento');
     
+    // Contas a receber (parcelas pendentes e pagas)
+    const contasPendentes = dadosFiltrados.contasReceber.filter(c => c.status === 'pendente');
+    const contasPagas = dadosFiltrados.contasReceber.filter(c => c.status === 'pago');
+    
     const totalVendasPagas = vendasPagas.reduce((acc, v) => acc + (v.valorTotal || 0), 0);
     const totalVendasFiado = vendasFiado.reduce((acc, v) => acc + (v.valorTotal || 0), 0);
+    const totalContasPendentes = contasPendentes.reduce((acc, c) => acc + (c.valor || 0), 0);
+    const totalContasPagas = contasPagas.reduce((acc, c) => acc + (c.valor || 0), 0);
     const totalCompras = dadosFiltrados.compras.reduce((acc, c) => acc + (c.valorTotal || 0), 0);
-    const lucro = totalVendasPagas - totalCompras;
-    const ticketMedio = vendasPagas.length > 0 ? totalVendasPagas / vendasPagas.length : 0;
+    
+    // Consolidar totais
+    const totalRecebido = totalVendasPagas + totalContasPagas;
+    const totalAReceber = totalVendasFiado + totalContasPendentes;
+    const saldo = totalRecebido - totalCompras;
     
     return {
-      totalVendasPagas,
-      totalVendasFiado,
+      totalRecebido,
+      totalAReceber,
       totalCompras,
-      lucro,
-      ticketMedio,
+      saldo,
       quantidadeVendasPagas: vendasPagas.length,
       quantidadeVendasFiado: vendasFiado.length,
+      quantidadeParcelasPagas: contasPagas.length,
+      quantidadeParcelasPendentes: contasPendentes.length,
       quantidadeCompras: dadosFiltrados.compras.length
     };
   }, [dadosFiltrados]);
 
-  const loading = loadingVendas || loadingCompras;
+  const loading = loadingVendas || loadingCompras || loadingFinanceiro;
 
   return (
     <PageLayout title="Financeiro">
@@ -117,7 +141,7 @@ export default function FinanceiroPage() {
             </div>
             
             <div className="flex flex-wrap gap-2">
-              {['hoje', 'semana', 'mes', 'ano'].map((p) => (
+              {['hoje', 'semana', 'mes', 'ano', 'todos'].map((p) => (
                 <button
                   key={p}
                   onClick={() => setPeriodo(p)}
@@ -127,7 +151,7 @@ export default function FinanceiroPage() {
                       : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                   }`}
                 >
-                  {p === 'hoje' ? 'Hoje' : p === 'semana' ? 'Última Semana' : p === 'mes' ? 'Último Mês' : 'Último Ano'}
+                  {p === 'hoje' ? 'Hoje' : p === 'semana' ? 'Última Semana' : p === 'mes' ? 'Último Mês' : p === 'ano' ? 'Último Ano' : 'Todos'}
                 </button>
               ))}
             </div>
@@ -140,51 +164,60 @@ export default function FinanceiroPage() {
           </div>
         ) : (
           <>
-            {/* Cards de estatísticas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-              {/* Total Vendas Pagas */}
-              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+            {/* Cards de estatísticas - Resumo consolidado */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Total Recebido */}
+              <div 
+                onClick={() => setModalAberto('recebido')}
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 cursor-pointer hover:shadow-lg transition-shadow"
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center">
                     <TrendingUp className="text-emerald-600 dark:text-emerald-400" size={24} />
                   </div>
                   <ArrowUpRight className="text-emerald-500" size={20} />
                 </div>
-                <p className="text-sm text-slate-600 dark:text-white mb-1">Total em Vendas</p>
-                <p className="text-lg md:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                  R$ {formatarMoeda(estatisticas.totalVendasPagas)}
+                <p className="text-sm text-slate-600 dark:text-white mb-1">Total Recebido</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  R$ {formatarMoeda(estatisticas.totalRecebido)}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-white mt-2">
-                  {estatisticas.quantidadeVendasPagas} venda(s) paga(s)
+                  {estatisticas.quantidadeVendasPagas} venda(s) + {estatisticas.quantidadeParcelasPagas} parcela(s)
                 </p>
               </div>
 
-              {/* Total Vendas Fiado */}
-              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+              {/* Total a Receber */}
+              <div 
+                onClick={() => setModalAberto('aReceber')}
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 cursor-pointer hover:shadow-lg transition-shadow"
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/20 rounded-xl flex items-center justify-center">
                     <Calendar className="text-amber-600 dark:text-amber-400" size={24} />
                   </div>
                 </div>
-                <p className="text-sm text-slate-600 dark:text-white mb-1">Vendas Fiado</p>
-                <p className="text-lg md:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                  R$ {formatarMoeda(estatisticas.totalVendasFiado)}
+                <p className="text-sm text-slate-600 dark:text-white mb-1">A Receber</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  R$ {formatarMoeda(estatisticas.totalAReceber)}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-white mt-2">
-                  {estatisticas.quantidadeVendasFiado} venda(s) pendente(s)
+                  {estatisticas.quantidadeVendasFiado} venda(s) + {estatisticas.quantidadeParcelasPendentes} parcela(s)
                 </p>
               </div>
 
               {/* Total Compras */}
-              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+              <div 
+                onClick={() => setModalAberto('despesas')}
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 cursor-pointer hover:shadow-lg transition-shadow"
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-xl flex items-center justify-center">
                     <TrendingDown className="text-red-600 dark:text-red-400" size={24} />
                   </div>
                   <ArrowDownRight className="text-red-500" size={20} />
                 </div>
-                <p className="text-sm text-slate-600 dark:text-white mb-1">Total em Compras</p>
-                <p className="text-lg md:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                <p className="text-sm text-slate-600 dark:text-white mb-1">Despesas</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                   R$ {formatarMoeda(estatisticas.totalCompras)}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-white mt-2">
@@ -192,48 +225,33 @@ export default function FinanceiroPage() {
                 </p>
               </div>
 
-              {/* Lucro */}
-              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+              {/* Saldo */}
+              <div 
+                onClick={() => setModalAberto('saldo')}
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 cursor-pointer hover:shadow-lg transition-shadow"
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    estatisticas.lucro >= 0 
+                    estatisticas.saldo >= 0 
                       ? 'bg-blue-100 dark:bg-blue-900/20' 
                       : 'bg-orange-100 dark:bg-orange-900/20'
                   }`}>
-                    <DollarSign className={estatisticas.lucro >= 0 
+                    <DollarSign className={estatisticas.saldo >= 0 
                       ? 'text-blue-600 dark:text-blue-400' 
                       : 'text-orange-600 dark:text-orange-400'
                     } size={24} />
                   </div>
                 </div>
-                <p className="text-sm text-slate-600 dark:text-white mb-1">
-                  {estatisticas.lucro >= 0 ? 'Lucro' : 'Prejuízo'}
-                </p>
-                <p className={`text-lg md:text-xl lg:text-2xl font-bold whitespace-nowrap ${
-                  estatisticas.lucro >= 0 
+                <p className="text-sm text-slate-600 dark:text-white mb-1">Saldo</p>
+                <p className={`text-2xl font-bold ${
+                  estatisticas.saldo >= 0 
                     ? 'text-blue-600 dark:text-blue-400' 
                     : 'text-orange-600 dark:text-orange-400'
                 }`}>
-                  R$ {formatarMoeda(Math.abs(estatisticas.lucro))}
+                  R$ {formatarMoeda(Math.abs(estatisticas.saldo))}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-white mt-2">
-                  {estatisticas.lucro >= 0 ? 'Positivo' : 'Negativo'}
-                </p>
-              </div>
-
-              {/* Ticket Médio */}
-              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-xl flex items-center justify-center">
-                    <ShoppingCart className="text-purple-600 dark:text-purple-400" size={24} />
-                  </div>
-                </div>
-                <p className="text-sm text-slate-600 dark:text-white mb-1">Ticket Médio</p>
-                <p className="text-lg md:text-xl lg:text-2xl font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                  R$ {formatarMoeda(estatisticas.ticketMedio)}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-white mt-2">
-                  Por venda
+                  {estatisticas.saldo >= 0 ? 'Positivo' : 'Negativo'}
                 </p>
               </div>
             </div>
@@ -324,6 +342,203 @@ export default function FinanceiroPage() {
               </div>
             </div>
           </>
+        )}
+
+        {/* Modais de Detalhamento */}
+        {modalAberto === 'recebido' && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setModalAberto(null)}>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Total Recebido</h2>
+                  <button onClick={() => setModalAberto(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">R$ {formatarMoeda(estatisticas.totalRecebido)}</p>
+              </div>
+              <div className="p-6 space-y-6">
+                {/* Vendas Pagas */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Vendas Pagas ({estatisticas.quantidadeVendasPagas})</h3>
+                  <div className="space-y-2">
+                    {dadosFiltrados.vendas.filter(v => v.status === 'concluida').map(venda => (
+                      <div key={venda.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                        <div>
+                          <p className="font-medium text-slate-900 dark:text-white">{venda.clienteNome || 'Cliente não informado'}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            {venda.codigoVenda} • {venda.dataVenda ? new Date(venda.dataVenda).toLocaleDateString('pt-BR') : '-'}
+                          </p>
+                        </div>
+                        <p className="font-semibold text-emerald-600 dark:text-emerald-400">R$ {formatarMoeda(venda.valorTotal || 0)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Parcelas Pagas */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Parcelas Pagas ({estatisticas.quantidadeParcelasPagas})</h3>
+                  <div className="space-y-2">
+                    {dadosFiltrados.contasReceber.filter(c => c.status === 'pago').map(conta => (
+                      <div key={conta.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                        <div>
+                          <p className="font-medium text-slate-900 dark:text-white">{conta.clienteNome || 'Cliente não informado'}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">{conta.descricao}</p>
+                        </div>
+                        <p className="font-semibold text-emerald-600 dark:text-emerald-400">R$ {formatarMoeda(conta.valor || 0)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {modalAberto === 'aReceber' && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setModalAberto(null)}>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">A Receber</h2>
+                  <button onClick={() => setModalAberto(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 mt-2">R$ {formatarMoeda(estatisticas.totalAReceber)}</p>
+              </div>
+              <div className="p-6 space-y-6">
+                {/* Vendas Fiado */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Vendas Fiado ({estatisticas.quantidadeVendasFiado})</h3>
+                  <div className="space-y-2">
+                    {dadosFiltrados.vendas.filter(v => v.status === 'em_andamento').map(venda => (
+                      <div key={venda.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                        <div>
+                          <p className="font-medium text-slate-900 dark:text-white">{venda.clienteNome || 'Cliente não informado'}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            {venda.codigoVenda} • {venda.dataVenda ? new Date(venda.dataVenda).toLocaleDateString('pt-BR') : '-'}
+                          </p>
+                        </div>
+                        <p className="font-semibold text-amber-600 dark:text-amber-400">R$ {formatarMoeda(venda.valorTotal || 0)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Parcelas Pendentes */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Parcelas Pendentes ({estatisticas.quantidadeParcelasPendentes})</h3>
+                  <div className="space-y-2">
+                    {dadosFiltrados.contasReceber.filter(c => c.status === 'pendente').map(conta => {
+                      const dataVencimento = conta.dataVencimento instanceof Date ? conta.dataVencimento : conta.dataVencimento?.toDate?.() || new Date(conta.dataVencimento);
+                      const isVencida = dataVencimento < new Date();
+                      return (
+                        <div key={conta.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                          <div>
+                            <p className="font-medium text-slate-900 dark:text-white">{conta.clienteNome || 'Cliente não informado'}</p>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              {conta.descricao} • Vence: {dataVencimento.toLocaleDateString('pt-BR')}
+                              {isVencida && <span className="ml-2 text-red-600 dark:text-red-400 font-semibold">VENCIDA</span>}
+                            </p>
+                          </div>
+                          <p className="font-semibold text-amber-600 dark:text-amber-400">R$ {formatarMoeda(conta.valor || 0)}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {modalAberto === 'despesas' && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setModalAberto(null)}>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Despesas</h2>
+                  <button onClick={() => setModalAberto(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="text-3xl font-bold text-red-600 dark:text-red-400 mt-2">R$ {formatarMoeda(estatisticas.totalCompras)}</p>
+              </div>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Compras ({estatisticas.quantidadeCompras})</h3>
+                <div className="space-y-2">
+                  {dadosFiltrados.compras.map(compra => (
+                    <div key={compra.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-white">{compra.fornecedor || 'Fornecedor não informado'}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          {compra.codigoCompra} • {compra.dataCompra ? new Date(compra.dataCompra).toLocaleDateString('pt-BR') : '-'}
+                        </p>
+                      </div>
+                      <p className="font-semibold text-red-600 dark:text-red-400">R$ {formatarMoeda(compra.valorTotal || 0)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {modalAberto === 'saldo' && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setModalAberto(null)}>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Saldo do Período</h2>
+                  <button onClick={() => setModalAberto(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <p className={`text-3xl font-bold mt-2 ${estatisticas.saldo >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                  R$ {formatarMoeda(Math.abs(estatisticas.saldo))}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  {estatisticas.saldo >= 0 ? 'Saldo Positivo' : 'Saldo Negativo'}
+                </p>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">Total Recebido</p>
+                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">R$ {formatarMoeda(estatisticas.totalRecebido)}</p>
+                  </div>
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mb-1">Total Despesas</p>
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">R$ {formatarMoeda(estatisticas.totalCompras)}</p>
+                  </div>
+                </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl">
+                  <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Cálculo</h4>
+                  <div className="space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                    <p>Recebido: R$ {formatarMoeda(estatisticas.totalRecebido)}</p>
+                    <p>Despesas: R$ {formatarMoeda(estatisticas.totalCompras)}</p>
+                    <div className="border-t border-slate-200 dark:border-slate-700 my-2"></div>
+                    <p className="font-semibold">Saldo: R$ {formatarMoeda(Math.abs(estatisticas.saldo))} ({estatisticas.saldo >= 0 ? 'Positivo' : 'Negativo'})</p>
+                  </div>
+                </div>
+                <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+                  <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Valores a Receber</h4>
+                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">R$ {formatarMoeda(estatisticas.totalAReceber)}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                    Estes valores ainda não entraram no saldo acima
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </PageLayout>

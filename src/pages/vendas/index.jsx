@@ -73,9 +73,13 @@ export default function VendasPage() {
 
   const handleSubmit = useCallback(async (data) => {
     try {
-      if (data === null) {
+      if (data === null || data?.reload) {
         setShowForm(false);
         setVendaParaEditar(null);
+        // Recarregar vendas se houver atualização de status
+        if (data?.reload) {
+          await listarVendas(searchTerm, statusFiltro);
+        }
         return;
       }
 
@@ -107,7 +111,7 @@ export default function VendasPage() {
       console.error('Erro ao salvar venda:', err);
       alert('Erro ao salvar venda: ' + err.message);
     }
-  }, [vendaParaEditar, atualizarVenda, adicionarVenda, listarVendas]);
+  }, [vendaParaEditar, atualizarVenda, adicionarVenda, listarVendas, searchTerm, statusFiltro]);
 
   const handleExcluir = useCallback(async () => {
     try {
@@ -123,6 +127,7 @@ export default function VendasPage() {
     const statusMap = {
       'em_andamento': 'Fiado',
       'concluida': 'Concluída',
+      'parcelado': 'Parcelado',
       'cancelada': 'Cancelada'
     };
     return statusMap[status] || status;
@@ -140,6 +145,8 @@ export default function VendasPage() {
         return <CheckCircle className="text-emerald-500" size={18} />;
       case 'em_andamento':
         return <Clock className="text-amber-500" size={18} />;
+      case 'parcelado':
+        return <Clock className="text-purple-500" size={18} />;
       case 'cancelada':
         return <XCircle className="text-red-500" size={18} />;
       default:
@@ -154,6 +161,8 @@ export default function VendasPage() {
         return `${baseClasses} bg-emerald-50 text-emerald-700 border border-emerald-200`;
       case 'em_andamento':
         return `${baseClasses} bg-amber-50 text-amber-700 border border-amber-200`;
+      case 'parcelado':
+        return `${baseClasses} bg-purple-50 text-purple-700 border border-purple-200`;
       case 'cancelada':
         return `${baseClasses} bg-red-50 text-red-700 border border-red-200`;
       default:
@@ -196,6 +205,7 @@ export default function VendasPage() {
                 <option value="">Todos os Status</option>
                   <option value="em_andamento">Fiado</option>
                   <option value="concluida">Concluída</option>
+                  <option value="parcelado">Parcelado</option>
                   <option value="cancelada">Cancelada</option>
                 </select>
               </div>
@@ -230,6 +240,7 @@ export default function VendasPage() {
               onSubmit={handleSubmit}
               initialData={vendaParaEditar}
               clientes={clientes}
+              onReloadVendas={() => listarVendas(searchTerm, statusFiltro)}
               onClienteAdicionado={async (novoCliente) => {
                 // Invalida o cache e recarrega a lista de clientes para incluir o novo
                 invalidarCache();

@@ -2,19 +2,25 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { vendaSchema } from '../../utils/schemas';
-import { Plus, Trash2, UserPlus } from 'lucide-react';
+import { Plus, Trash2, UserPlus, CheckCircle, Circle } from 'lucide-react';
 import Modal from '../modals/Modal';
 import ClienteForm from './ClienteForm';
 import { useClientes } from '../../hooks/useClientes';
 import { useEstoque } from '../../hooks/useEstoque';
+import { useFinanceiro } from '../../hooks/useFinanceiro';
+import { db } from '../../services/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
-export default function VendaForm({ onSubmit, clientes, initialData, onClienteAdicionado }) {
+export default function VendaForm({ onSubmit, clientes, initialData, onClienteAdicionado, onReloadVendas }) {
   const [showClienteModal, setShowClienteModal] = useState(false);
   const [clientesExtras, setClientesExtras] = useState([]);
   const [formInitialized, setFormInitialized] = useState(false);
   const [errosEstoque, setErrosEstoque] = useState({});
+  const [mostrarParcelamento, setMostrarParcelamento] = useState(false);
+  const [parcelas, setParcelas] = useState([]);
   const { adicionarCliente } = useClientes();
   const { produtos, listarProdutos } = useEstoque();
+  const { contasReceber, listarContasReceber, receberConta } = useFinanceiro();
 
   useEffect(() => {
     listarProdutos();
@@ -39,9 +45,36 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
       status: 'em_andamento',
       formaPagamento: 'dinheiro',
       desconto: 0,
-      observacoes: ''
+      observacoes: '',
+      parcelamento: {
+        numeroParcelas: 1,
+        diaVencimento: 1,
+        valorParcela: 0
+      }
     }
   });
+
+  // Watch para campos de parcelamento
+  const statusWatch = watch('status');
+  const numeroParcelas = watch('parcelamento.numeroParcelas');
+
+  // Controlar exibição dos campos de parcelamento
+  useEffect(() => {
+    setMostrarParcelamento(statusWatch === 'parcelado');
+    if (statusWatch !== 'parcelado') {
+      setValue('parcelamento.numeroParcelas', 1);
+      setValue('parcelamento.diaVencimento', 1);
+    }
+  }, [statusWatch, setValue]);
+
+  // Calcular valor da parcela quando número de parcelas mudar
+  useEffect(() => {
+    if (mostrarParcelamento && numeroParcelas > 0) {
+      const total = calcularTotal().total;
+      const valorParcela = total / numeroParcelas;
+      setValue('parcelamento.valorParcela', valorParcela);
+    }
+  }, [numeroParcelas, mostrarParcelamento, setValue]);
 
   // Atualizar formulário quando initialData mudar (apenas uma vez)
   useEffect(() => {
@@ -66,7 +99,12 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
         status: initialData.status || 'em_andamento',
         formaPagamento: initialData.formaPagamento || 'dinheiro',
         desconto: initialData.desconto || 0,
-        observacoes: initialData.observacoes || ''
+        observacoes: initialData.observacoes || '',
+        parcelamento: initialData.parcelamento || {
+          numeroParcelas: 1,
+          diaVencimento: 1,
+          valorParcela: 0
+        }
       });
       setFormInitialized(true);
     } else if (!initialData) {
@@ -77,11 +115,28 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
         status: 'em_andamento',
         formaPagamento: 'dinheiro',
         desconto: 0,
-        observacoes: ''
+        observacoes: '',
+        parcelamento: {
+          numeroParcelas: 1,
+          diaVencimento: 1,
+          valorParcela: 0
+        }
       });
       setFormInitialized(true);
     }
   }, [initialData, reset, produtos, formInitialized]);
+
+  // Buscar parcelas quando editar venda parcelada
+  useEffect(() => {
+    if (initialData?.id && initialData?.status === 'parcelado') {
+      listarContasReceber({ vendaId: initialData.id }).then(contas => {
+        setParcelas(contas || []);
+      }).catch(error => {
+        console.error('Erro ao buscar parcelas:', error);
+        setParcelas([]);
+      });
+    }
+  }, [initialData, listarContasReceber]);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -202,6 +257,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
   // Calcula o valor total sempre que os itens mudarem
   const itens = watch('itens');
   const desconto = watch('desconto');
+  
   const calcularTotal = () => {
     const subtotal = Math.round(itens.reduce((sum, item) => 
       sum + (Number(item.quantidade) || 0) * (Number(item.valorUnitario) || 0)
@@ -243,6 +299,17 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
       };
       
       await onSubmit(dadosParaEnviar);
+      
+      // Se for parcelado, mostrar mensagem informativa
+      if (data.status === 'parcelado' && data.parcelamento?.numeroParcelas) {
+        alert(
+          `Venda parcelada criada com sucesso!\n\n` +
+          `Parcelas: ${data.parcelamento.numeroParcelas}x de R$ ${data.parcelamento.valorParcela?.toFixed(2)}\n` +
+          `Vencimento: Todo dia ${data.parcelamento.diaVencimento}\n\n` +
+          `✓ Primeira parcela registrada como PAGA hoje\n` +
+          `✓ Demais parcelas criadas como CONTAS A RECEBER no financeiro`
+        );
+      }
     } catch (error) {
       console.error('Erro ao salvar venda:', error);
       alert('Erro ao salvar venda: ' + error.message);
@@ -520,6 +587,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
               >
                 <option value="em_andamento">Fiado</option>
                 <option value="concluida">Concluída</option>
+                <option value="parcelado">Parcelado</option>
                 <option value="cancelada">Cancelada</option>
               </select>
               {errors.status && (
@@ -542,12 +610,70 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
                 <option value="cartao_credito">Cartão de Crédito</option>
                 <option value="transferencia">Transferência</option>
                 <option value="fiado">Fiado</option>
+                <option value="parcelado">Parcelado</option>
               </select>
               {errors.formaPagamento && (
                 <p className="mt-1 text-sm text-red-600">{errors.formaPagamento.message}</p>
               )}
             </div>
           </div>
+
+          {/* Campos de Parcelamento */}
+          {mostrarParcelamento && (
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-100 mb-4">Configurar Parcelamento</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Número de Parcelas */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Número de Parcelas
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
+                    {...register('parcelamento.numeroParcelas')}
+                    onWheel={(e) => e.target.blur()}
+                  />
+                </div>
+
+                {/* Dia de Vencimento */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Dia de Vencimento
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    placeholder="Ex: 10 (todo dia 10)"
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
+                    {...register('parcelamento.diaVencimento')}
+                    onWheel={(e) => e.target.blur()}
+                  />
+                </div>
+
+                {/* Valor da Parcela (calculado) */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Valor de Cada Parcela
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`R$ ${(watch('parcelamento.valorParcela') || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 font-semibold cursor-not-allowed"
+                  />
+                </div>
+              </div>
+              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <p className="text-sm text-blue-900 dark:text-blue-100">
+                  <strong>Atenção:</strong> A primeira parcela será registrada como paga hoje. As demais parcelas serão criadas como contas a receber no financeiro.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Resumo de Valores */}
           <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 space-y-3">
@@ -604,6 +730,124 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
             <p className="mt-1 text-sm text-red-600">{errors.observacoes.message}</p>
           )}
         </div>
+
+        {/* Gerenciamento de Parcelas (apenas ao editar) */}
+        {initialData && initialData.status === 'parcelado' && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
+            <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">
+              Parcelas da Venda {parcelas.length === 0 && '(Carregando...)'}
+            </h3>
+            {parcelas.length > 0 ? (
+              <div className="space-y-3">
+              {parcelas.map((parcela) => {
+                const dataVencimento = parcela.dataVencimento instanceof Date 
+                  ? parcela.dataVencimento 
+                  : parcela.dataVencimento?.toDate?.() || new Date(parcela.dataVencimento);
+                const isPago = parcela.status === 'pago';
+                
+                return (
+                  <div key={parcela.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {isPago ? (
+                        <CheckCircle className="text-green-600 dark:text-green-400" size={24} />
+                      ) : (
+                        <Circle className="text-slate-400" size={24} />
+                      )}
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-white">
+                          {parcela.descricao}
+                        </p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          Vencimento: {dataVencimento.toLocaleDateString('pt-BR')}
+                          {isPago && parcela.dataPagamento && (
+                            <span className="ml-2 text-green-600 dark:text-green-400">
+                              • Pago em {(
+                                parcela.dataPagamento instanceof Date 
+                                  ? parcela.dataPagamento 
+                                  : parcela.dataPagamento?.toDate?.() || new Date(parcela.dataPagamento)
+                              ).toLocaleDateString('pt-BR')}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <p className="font-semibold text-slate-900 dark:text-white">
+                        R$ {(parcela.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                      {!isPago ? (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (confirm('Confirmar recebimento desta parcela?')) {
+                              try {
+                                await receberConta(parcela.id, {
+                                  status: 'pago',
+                                  dataPagamento: new Date(),
+                                  valorRecebido: parcela.valor,
+                                  valorTotal: parcela.valor
+                                });
+                                // Atualizar lista de parcelas
+                                const contasAtualizadas = await listarContasReceber({ vendaId: initialData.id });
+                                setParcelas(contasAtualizadas || []);
+                                
+                                // Verificar se todas as parcelas foram pagas
+                                const todasPagas = contasAtualizadas.every(c => c.status === 'pago');
+                                
+                                if (todasPagas) {
+                                  // Alterar o campo status do formulário para concluida
+                                  setValue('status', 'concluida');
+                                  
+                                  alert('Todas as parcelas foram pagas! Clique em "Atualizar Venda" para concluir.');
+                                }
+                              } catch (error) {
+                                console.error('Erro:', error);
+                                alert('Erro ao marcar parcela como paga: ' + error.message);
+                              }
+                            }
+                          }}
+                          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                          Marcar como Pago
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (confirm('Deseja desmarcar esta parcela como paga?')) {
+                              try {
+                                await receberConta(parcela.id, {
+                                  status: 'pendente',
+                                  dataPagamento: null,
+                                  valorRecebido: 0
+                                });
+                                // Atualizar lista de parcelas
+                                const contasAtualizadas = await listarContasReceber({ vendaId: initialData.id });
+                                setParcelas(contasAtualizadas || []);
+                                
+                                // Se a venda estava concluída, voltar para parcelado
+                                setValue('status', 'parcelado');
+                              } catch (error) {
+                                console.error('Erro:', error);
+                                alert('Erro ao desmarcar parcela: ' + error.message);
+                              }
+                            }
+                          }}
+                          className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                          Desmarcar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            ) : (
+              <p className="text-slate-600 dark:text-slate-400 text-sm">Nenhuma parcela encontrada para esta venda.</p>
+            )}
+          </div>
+        )}
 
         {/* Botões */}
         <div className="flex justify-end gap-3 border-t border-slate-200 dark:border-slate-700 pt-6">

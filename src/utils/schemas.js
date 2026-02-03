@@ -12,11 +12,16 @@ export const vendaSchema = z.object({
   })).min(1, 'Adicione pelo menos um item'),
   valorTotal: z.coerce.number().min(0, 'Valor total deve ser maior ou igual a 0').optional(),
   desconto: z.coerce.number().min(0, 'Desconto deve ser maior ou igual a 0').optional(),
-  status: z.enum(['concluida', 'em_andamento', 'cancelada'], {
+  status: z.enum(['concluida', 'em_andamento', 'cancelada', 'parcelado'], {
     required_error: 'Status é obrigatório'
   }),
-  formaPagamento: z.enum(['dinheiro', 'pix', 'cartao_debito', 'cartao_credito', 'transferencia', 'fiado'], {
+  formaPagamento: z.enum(['dinheiro', 'pix', 'cartao_debito', 'cartao_credito', 'transferencia', 'fiado', 'parcelado'], {
     required_error: 'Forma de pagamento é obrigatória'
+  }).optional(),
+  parcelamento: z.object({
+    numeroParcelas: z.coerce.number().min(1).max(12).optional(),
+    diaVencimento: z.coerce.number().min(1).max(31).optional(),
+    valorParcela: z.coerce.number().min(0).optional()
   }).optional(),
   observacoes: z.string().max(500, 'Observações devem ter no máximo 500 caracteres').optional()
 });
