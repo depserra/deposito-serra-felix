@@ -23,6 +23,11 @@ export const vendaSchema = z.object({
     diaVencimento: z.coerce.number().min(1).max(31).optional(),
     valorParcela: z.coerce.number().min(0).optional()
   }).optional(),
+  cartaoCredito: z.object({
+    parcelasCartao: z.coerce.number().min(1).max(12).optional(),
+    quemPagaJuros: z.enum(['estabelecimento', 'cliente']).optional(),
+    taxaJuros: z.coerce.number().min(0).max(100).optional()
+  }).optional(),
   observacoes: z.string().max(500, 'Observações devem ter no máximo 500 caracteres').optional()
 });
 

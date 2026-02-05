@@ -17,6 +17,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
   const [formInitialized, setFormInitialized] = useState(false);
   const [errosEstoque, setErrosEstoque] = useState({});
   const [mostrarParcelamento, setMostrarParcelamento] = useState(false);
+  const [mostrarJurosCartao, setMostrarJurosCartao] = useState(false);
   const [parcelas, setParcelas] = useState([]);
   const { adicionarCliente } = useClientes();
   const { produtos, listarProdutos } = useEstoque();
@@ -50,6 +51,11 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
         numeroParcelas: 1,
         diaVencimento: 1,
         valorParcela: 0
+      },
+      cartaoCredito: {
+        parcelasCartao: 1,
+        quemPagaJuros: 'estabelecimento',
+        taxaJuros: 0
       }
     }
   });
@@ -57,6 +63,10 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
   // Watch para campos de parcelamento
   const statusWatch = watch('status');
   const numeroParcelas = watch('parcelamento.numeroParcelas');
+  const formaPagamentoWatch = watch('formaPagamento');
+  const parcelasCartao = watch('cartaoCredito.parcelasCartao');
+  const taxaJuros = watch('cartaoCredito.taxaJuros');
+  const quemPagaJuros = watch('cartaoCredito.quemPagaJuros');
 
   // Controlar exibição dos campos de parcelamento
   useEffect(() => {
@@ -66,6 +76,16 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
       setValue('parcelamento.diaVencimento', 1);
     }
   }, [statusWatch, setValue]);
+
+  // Controlar exibição dos campos de cartão de crédito
+  useEffect(() => {
+    setMostrarJurosCartao(formaPagamentoWatch === 'cartao_credito');
+    if (formaPagamentoWatch !== 'cartao_credito') {
+      setValue('cartaoCredito.parcelasCartao', 1);
+      setValue('cartaoCredito.taxaJuros', 0);
+      setValue('cartaoCredito.quemPagaJuros', 'estabelecimento');
+    }
+  }, [formaPagamentoWatch, setValue]);
 
   // Calcular valor da parcela quando número de parcelas mudar
   useEffect(() => {
@@ -104,6 +124,11 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
           numeroParcelas: 1,
           diaVencimento: 1,
           valorParcela: 0
+        },
+        cartaoCredito: initialData.cartaoCredito || {
+          parcelasCartao: 1,
+          quemPagaJuros: 'estabelecimento',
+          taxaJuros: 0
         }
       });
       setFormInitialized(true);
@@ -120,6 +145,11 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
           numeroParcelas: 1,
           diaVencimento: 1,
           valorParcela: 0
+        },
+        cartaoCredito: {
+          parcelasCartao: 1,
+          quemPagaJuros: 'estabelecimento',
+          taxaJuros: 0
         }
       });
       setFormInitialized(true);
@@ -266,6 +296,28 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
     setValue('valorTotal', total);
     return { subtotal, total };
   };
+
+  // Calcular valor líquido quando estabelecimento paga juros (apenas para exibição)
+  const calcularValorLiquidoEstabelecimento = () => {
+    if (formaPagamentoWatch !== 'cartao_credito' || quemPagaJuros !== 'estabelecimento' || Number(taxaJuros) <= 0 || Number(parcelasCartao) <= 1) {
+      return null;
+    }
+    
+    const subtotal = Math.round(itens.reduce((sum, item) => 
+      sum + (Number(item.quantidade) || 0) * (Number(item.valorUnitario) || 0)
+    , 0) * 100) / 100;
+    const totalOriginal = Math.round((subtotal - (Number(desconto) || 0)) * 100) / 100;
+    
+    const taxaMensal = Number(taxaJuros) / 100;
+    const nParcelas = Number(parcelasCartao);
+    const valorComJuros = totalOriginal * Math.pow(1 + taxaMensal, nParcelas);
+    const valorJuros = valorComJuros - totalOriginal;
+    const valorLiquido = Math.round((totalOriginal - valorJuros) * 100) / 100;
+    
+    return { valorLiquido, valorJuros: Math.round(valorJuros * 100) / 100, totalOriginal };
+  };
+
+  const valorLiquidoInfo = calcularValorLiquidoEstabelecimento();
 
   const handleFormSubmit = async (data) => {
     try {
@@ -618,6 +670,126 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
             </div>
           </div>
 
+          {/* Campos de Cartão de Crédito */}
+          {mostrarJurosCartao && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">Configurar Cartão de Crédito</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Parcelas do Cartão */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Parcelas do Cartão
+                  </label>
+                  <select
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    {...register('cartaoCredito.parcelasCartao')}
+                  >
+                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
+                      <option key={n} value={n}>{n}x</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Quem Paga os Juros */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Quem Paga os Juros?
+                  </label>
+                  <select
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    {...register('cartaoCredito.quemPagaJuros')}
+                  >
+                    <option value="estabelecimento">Estabelecimento</option>
+                    <option value="cliente">Cliente</option>
+                  </select>
+                </div>
+
+                {/* Taxa de Juros */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Taxa de Juros (% ao mês)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    {...register('cartaoCredito.taxaJuros')}
+                    onWheel={(e) => e.target.blur()}
+                  />
+                </div>
+              </div>
+
+              {/* Resumo dos Valores com Juros */}
+              {Number(parcelasCartao) > 1 && Number(taxaJuros) > 0 && (
+                <div className="mt-4 p-4 bg-white dark:bg-slate-800 rounded-lg border border-blue-200 dark:border-blue-700">
+                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Resumo</h4>
+                  {(() => {
+                    // Calcular valor original diretamente dos itens para evitar problemas de loop
+                    const subtotal = Math.round((itens || []).reduce((sum, item) => 
+                      sum + (Number(item.quantidade) || 0) * (Number(item.valorUnitario) || 0)
+                    , 0) * 100) / 100;
+                    const valorOriginal = Math.round((subtotal - (Number(desconto) || 0)) * 100) / 100;
+                    const taxaMensal = Number(taxaJuros) / 100;
+                    const nParcelas = Number(parcelasCartao);
+                    // Cálculo de juros compostos
+                    const valorComJuros = valorOriginal * Math.pow(1 + taxaMensal, nParcelas);
+                    const valorJuros = valorComJuros - valorOriginal;
+                    const valorParcelaCartao = valorComJuros / nParcelas;
+                    
+                    return (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div>
+                          <p className="text-slate-500 dark:text-slate-400">Valor Original</p>
+                          <p className="font-semibold text-slate-900 dark:text-white">
+                            R$ {valorOriginal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500 dark:text-slate-400">Juros Total</p>
+                          <p className="font-semibold text-red-600 dark:text-red-400">
+                            R$ {valorJuros.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500 dark:text-slate-400">Valor com Juros</p>
+                          <p className="font-semibold text-blue-600 dark:text-blue-400">
+                            R$ {valorComJuros.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500 dark:text-slate-400">Parcela</p>
+                          <p className="font-semibold text-slate-900 dark:text-white">
+                            {nParcelas}x de R$ {valorParcelaCartao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        {quemPagaJuros === 'cliente' && (
+                          <div className="col-span-2 md:col-span-4 mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                            <p className="text-green-700 dark:text-green-300 text-sm">
+                              ✓ O cliente pagará <strong>R$ {valorComJuros.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> (com juros), 
+                              e você receberá <strong>R$ {valorOriginal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> no financeiro.
+                            </p>
+                          </div>
+                        )}
+                        {quemPagaJuros === 'estabelecimento' && (
+                          <div className="col-span-2 md:col-span-4 mt-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                            <p className="text-orange-700 dark:text-orange-300 text-sm">
+                              ⚠ O cliente pagará <strong>R$ {valorOriginal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>, 
+                              mas você absorverá os juros de <strong>R$ {valorJuros.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>.
+                              <br/>
+                              <strong className="text-red-600 dark:text-red-400">Valor líquido que você receberá: R$ {(valorOriginal - valorJuros).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Campos de Parcelamento */}
           {mostrarParcelamento && (
             <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-6">
@@ -708,9 +880,35 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
             <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
               <div className="flex justify-between items-center">
                 <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">Valor Total:</span>
-                <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                  R$ {calcularTotal().total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
+                {(() => {
+                  const totalBase = calcularTotal().total;
+                  
+                  // Se estabelecimento paga os juros, mostrar valor líquido
+                  if (formaPagamentoWatch === 'cartao_credito' && quemPagaJuros === 'estabelecimento' && Number(taxaJuros) > 0 && Number(parcelasCartao) > 1) {
+                    const taxaMensal = Number(taxaJuros) / 100;
+                    const nParcelas = Number(parcelasCartao);
+                    const valorComJuros = totalBase * Math.pow(1 + taxaMensal, nParcelas);
+                    const valorJuros = valorComJuros - totalBase;
+                    const valorLiquido = totalBase - valorJuros;
+                    
+                    return (
+                      <div className="text-right">
+                        <span className="text-sm text-slate-500 dark:text-slate-400 line-through mr-2">
+                          R$ {totalBase.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        <span className="text-2xl font-bold text-red-600 dark:text-red-400">
+                          R$ {valorLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    );
+                  }
+                  
+                  return (
+                    <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                      R$ {totalBase.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>

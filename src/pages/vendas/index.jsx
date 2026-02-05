@@ -93,6 +93,39 @@ export default function VendasPage() {
         }))
       };
 
+      // Calcular valores de cartão de crédito se aplicável
+      if (data.formaPagamento === 'cartao_credito' && data.cartaoCredito) {
+        const valorOriginal = Number(data.valorTotal) || 0;
+        const taxaMensal = Number(data.cartaoCredito.taxaJuros) / 100;
+        const nParcelas = Number(data.cartaoCredito.parcelasCartao) || 1;
+        const valorComJuros = valorOriginal * Math.pow(1 + taxaMensal, nParcelas);
+        const valorJuros = valorComJuros - valorOriginal;
+        const quemPagaJuros = data.cartaoCredito.quemPagaJuros || 'estabelecimento';
+        
+        dadosProcessados.cartaoCredito = {
+          ...data.cartaoCredito,
+          parcelasCartao: nParcelas,
+          taxaJuros: Number(data.cartaoCredito.taxaJuros) || 0,
+          valorOriginal: valorOriginal,
+          valorComJuros: Math.round(valorComJuros * 100) / 100,
+          valorJuros: Math.round(valorJuros * 100) / 100,
+          valorParcelaCartao: Math.round((valorComJuros / nParcelas) * 100) / 100
+        };
+        
+        if (quemPagaJuros === 'cliente') {
+          // Cliente paga os juros: cliente paga valorComJuros, estabelecimento recebe valorOriginal
+          dadosProcessados.valorTotal = valorOriginal;
+          dadosProcessados.valorClientePaga = Math.round(valorComJuros * 100) / 100;
+        } else {
+          // Estabelecimento paga os juros: cliente paga valorOriginal, 
+          // mas estabelecimento recebe menos (valorOriginal - juros da maquininha)
+          const valorLiquido = Math.round((valorOriginal - valorJuros) * 100) / 100;
+          dadosProcessados.valorTotal = valorLiquido; // Valor que realmente entra no caixa
+          dadosProcessados.valorClientePaga = valorOriginal; // Cliente paga o valor normal
+          dadosProcessados.cartaoCredito.valorLiquidoEstabelecimento = valorLiquido;
+        }
+      }
+
       if (vendaParaEditar) {
         await atualizarVenda(vendaParaEditar.id, dadosProcessados);
         setVendaParaEditar(null);
