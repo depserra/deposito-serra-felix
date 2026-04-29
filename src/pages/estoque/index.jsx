@@ -113,8 +113,8 @@ export default function Estoque() {
   };
 
   const handleImportacaoConcluida = (resultado) => {
-    // Recarregar lista de produtos após importação
-    listarProdutos();
+    // Recarregar lista de produtos após importação (forçando atualização)
+    listarProdutos({ forcarAtualizacao: true });
   };
 
   return (

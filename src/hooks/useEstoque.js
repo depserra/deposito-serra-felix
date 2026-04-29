@@ -31,10 +31,11 @@ export function useEstoque() {
   // Função para listar produtos
   const listarProdutos = useCallback(async (filtros = {}) => {
     try {
-      // Verificar cache (2 minutos) se não houver filtros
+      // Verificar cache (2 minutos) se não houver filtros e se não for forçada atualização
+      const forcarAtualizacao = filtros.forcarAtualizacao;
       const temFiltros = filtros.categoria || filtros.estoqueMinimo || filtros.nome;
       const cache = cacheRef.current;
-      if (!temFiltros && cache.data && cache.timestamp && Date.now() - cache.timestamp < 120000) {
+      if (!forcarAtualizacao && !temFiltros && cache.data && cache.timestamp && Date.now() - cache.timestamp < 120000) {
         setProdutos(cache.data);
         return cache.data;
       }
