@@ -6,6 +6,7 @@ import PageLayout from '../../components/layout-new/PageLayout';
 import Modal from '../../components/modals/Modal';
 import { LoadingSpinner, ProdutosSkeleton } from '../../components/ui/LoadingComponents';
 import { formatCurrency } from '../../utils/formatters';
+import ImportarNFe from '../../components/ui/ImportarNFe';
 
 export default function Estoque() {
   const { produtos, carregando, erro, adicionarProduto, atualizarProduto, deletarProduto, listarProdutos } = useEstoque();
@@ -111,9 +112,17 @@ export default function Estoque() {
     setMostrarFormulario(true);
   };
 
+  const handleImportacaoConcluida = (resultado) => {
+    // Recarregar lista de produtos após importação
+    listarProdutos();
+  };
+
   return (
     <PageLayout title="Estoque">
       <div className="space-y-6">
+
+        {/* Componente de Importação de NFe */}
+        <ImportarNFe onImportacaoConcluida={handleImportacaoConcluida} />
 
         {/* Botão Novo Produto */}
         <div className="flex justify-end">
