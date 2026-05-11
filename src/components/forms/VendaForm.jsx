@@ -335,19 +335,45 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
       }
 
       // Adiciona o nome do cliente aos dados
-      const clienteSelecionado = clientes.find(c => c.id === data.clienteId);
+      // Usa todosClientes para incluir clientes recém-cadastrados (clientesExtras)
+      const clienteSelecionado = todosClientes.find(c => c.id === data.clienteId);
       
+      // Captura a hora EXATA do clique em "Cadastrar Venda"
+      // e combina com a data escolhida no formulário
+      const agora = new Date();
+      let dataComHoraExata;
+      if (data.dataVenda) {
+        const [ano, mes, dia] = data.dataVenda.split('-').map(Number);
+        dataComHoraExata = new Date(
+          ano,
+          mes - 1,
+          dia,
+          agora.getHours(),
+          agora.getMinutes(),
+          agora.getSeconds()
+        ).toISOString();
+      } else {
+        dataComHoraExata = agora.toISOString();
+      }
+
       const { total } = calcularTotal();
       const dadosParaEnviar = {
         ...data,
-        clienteNome: clienteSelecionado?.nome,
+        dataVenda: dataComHoraExata,
+        clienteNome: clienteSelecionado?.nome || data.clienteId || 'Cliente',
         valorTotal: total,
         desconto: Number(data.desconto) || 0,
-        itens: data.itens.map(item => ({
-          ...item,
-          quantidade: Number(item.quantidade) || 0,
-          valorUnitario: Number(item.valorUnitario) || 0
-        }))
+        itens: data.itens.map(item => {
+          const produtoInfo = produtos.find(p => p.id === item.produto);
+          return {
+            ...item,
+            quantidade: Number(item.quantidade) || 0,
+            valorUnitario: Number(item.valorUnitario) || 0,
+            produtoNome: produtoInfo?.nome || '',
+            produtoCodigo: produtoInfo?.codigo || produtoInfo?.codigoProduto || '',
+            unidade: produtoInfo?.unidade || 'UN'
+          };
+        })
       };
       
       await onSubmit(dadosParaEnviar);

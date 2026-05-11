@@ -39,3 +39,24 @@ export function formatNumber(value, decimals = 2) {
     maximumFractionDigits: decimals
   });
 }
+
+/**
+ * Formata uma data para o formato brasileiro (DD/MM/YYYY)
+ * @param {Date|string} date - Data a ser formatada
+ * @returns {string} - Data formatada
+ */
+export function formatarData(date) {
+  if (!date) return '';
+  
+  const dataObj = typeof date === 'string' ? new Date(date) : date;
+  
+  if (!(dataObj instanceof Date) || isNaN(dataObj)) {
+    return '';
+  }
+  
+  return dataObj.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}

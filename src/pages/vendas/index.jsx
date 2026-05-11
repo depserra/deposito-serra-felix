@@ -7,9 +7,10 @@ import { useDebounce } from '../../hooks/useDebounce';
 import PageLayout from '../../components/layout-new/PageLayout';
 import VendaForm from '../../components/forms/VendaForm';
 import Modal from '../../components/modals/Modal';
-import { Plus, Search, Edit, Trash2, FileText, CheckCircle, Clock, XCircle, Filter, Users, Eye } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, FileText, CheckCircle, Clock, XCircle, Filter, Users, Eye, Printer, Download } from 'lucide-react';
 import { VendasSkeleton, LoadingSpinner, EmptyState } from '../../components/ui/LoadingComponents';
 import { formatCurrency } from '../../utils/formatters';
+import { gerarComprovanteVenda, imprimirComprovanteVenda } from '../../utils/gerarComprovanteVenda';
 
 export default function VendasPage() {
   const location = useLocation();
@@ -83,15 +84,31 @@ export default function VendasPage() {
         return;
       }
 
-      const dadosProcessados = {
+      // Remove campos undefined recursivamente (Firestore não aceita undefined)
+      const removerUndefined = (obj) => {
+        if (Array.isArray(obj)) return obj.map(removerUndefined);
+        if (obj && typeof obj === 'object') {
+          return Object.fromEntries(
+            Object.entries(obj)
+              .filter(([, v]) => v !== undefined)
+              .map(([k, v]) => [k, removerUndefined(v)])
+          );
+        }
+        return obj;
+      };
+
+      const dadosProcessados = removerUndefined({
         ...data,
         valorTotal: Number(data.valorTotal || 0),
         itens: data.itens.map(item => ({
           ...item,
           quantidade: Math.round(Number(item.quantidade || 0)),
-          valorUnitario: Number(item.valorUnitario || 0)
+          valorUnitario: Number(item.valorUnitario || 0),
+          produtoNome: item.produtoNome || '',
+          produtoCodigo: item.produtoCodigo || '',
+          unidade: item.unidade || 'UN'
         }))
-      };
+      });
 
       // Calcular valores de cartão de crédito se aplicável
       if (data.formaPagamento === 'cartao_credito' && data.cartaoCredito) {
@@ -171,6 +188,36 @@ export default function VendasPage() {
     const produto = produtos.find(p => p.id === produtoId);
     return produto?.nome || produtoId;
   }, [produtos]);
+
+  // Função para buscar dados completos do cliente
+  const obterClienteCompleto = useCallback((clienteId) => {
+    return clientes.find(c => c.id === clienteId);
+  }, [clientes]);
+
+  // Função para imprimir o comprovante
+  const handleImprimirComprovante = useCallback(async () => {
+    try {
+      const cliente = obterClienteCompleto(vendaDetalhes.clienteId);
+      await imprimirComprovanteVenda(vendaDetalhes, cliente || {}, produtos);
+    } catch (error) {
+      console.error('Erro ao imprimir:', error);
+      alert('Erro ao imprimir comprovante: ' + error.message);
+    }
+  }, [vendaDetalhes, obterClienteCompleto, produtos]);
+
+  // Função para baixar o comprovante em PDF
+  const handleBaixarComprovante = useCallback(async () => {
+    try {
+      const cliente = obterClienteCompleto(vendaDetalhes.clienteId);
+      await gerarComprovanteVenda(vendaDetalhes, cliente || {}, produtos);
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      alert('Erro ao gerar comprovante: ' + error.message);
+    }
+  }, [vendaDetalhes, obterClienteCompleto, produtos]);
+
+  // Função para gerar nota de venda em Word
+
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -392,6 +439,20 @@ export default function VendasPage() {
                               <Eye size={16} />
                             </button>
                             <button
+                              onClick={async () => {
+                                try {
+                                  const cliente = obterClienteCompleto(venda.clienteId);
+                                  await imprimirComprovanteVenda(venda, cliente || {}, produtos);
+                                } catch (error) {
+                                  alert('Erro ao imprimir: ' + error.message);
+                                }
+                              }}
+                              className="p-2 text-slate-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all duration-200"
+                              title="Imprimir comprovante"
+                            >
+                              <Printer size={16} />
+                            </button>
+                            <button
                               onClick={() => {
                                 setVendaParaEditar(venda);
                                 setShowForm(true);
@@ -438,6 +499,19 @@ export default function VendasPage() {
                           className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all duration-200"
                         >
                           <Eye size={16} />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const cliente = obterClienteCompleto(venda.clienteId);
+                              await imprimirComprovanteVenda(venda, cliente || {}, produtos);
+                            } catch (error) {
+                              alert('Erro ao imprimir: ' + error.message);
+                            }
+                          }}
+                          className="p-2 text-slate-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all duration-200"
+                        >
+                          <Printer size={16} />
                         </button>
                         <button
                           onClick={() => {
@@ -581,14 +655,21 @@ export default function VendasPage() {
               )}
 
               {/* Botões de ação */}
-              <div className="border-t border-slate-200 dark:border-slate-700 pt-6 flex gap-3">
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-6 flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleImprimirComprovante}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors duration-200"
+                >
+                  <Printer size={16} />
+                  Imprimir Comprovante
+                </button>
                 <button
                   onClick={() => {
                     setVendaParaEditar(vendaDetalhes);
                     setShowForm(true);
                     setShowDetalhes(false);
                   }}
-                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors duration-200"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors duration-200"
                 >
                   <Edit size={16} />
                   Editar Venda

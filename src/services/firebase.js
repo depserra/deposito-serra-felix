@@ -1,9 +1,12 @@
 // Configuração do Firebase (substitua com suas credenciais)
-import { initializeApp, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage";
+import { getApp } from "firebase/app";
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCMzQvw7qcxw6tB-P6y6HC5X6uH2ZW4-go",
   authDomain: "deposito-serra-felix.firebaseapp.com",
@@ -13,7 +16,7 @@ const firebaseConfig = {
   appId: "1:536757368497:web:a836ba88591bc3caf25490"
 };
 
-// Inicialização singleton do Firebase
+// Initialize Firebase
 let app;
 try {
   app = initializeApp(firebaseConfig);

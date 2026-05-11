@@ -49,6 +49,17 @@ export const COLORS = {
   INFO: '#3b82f6'
 };
 
+// Configurações da Empresa
+export const EMPRESA = {
+  NOME: 'DEPÓSITO SERRA DO FÉLIX',
+  CNPJ: '00.000.000/0000-00', // TODO: Substituir pelo CNPJ real
+  TELEFONE: '(00) 00000-0000', // TODO: Substituir pelo telefone real
+  EMAIL: 'contato@serra-felix.com.br', // TODO: Substituir pelo email real
+  ENDERECO: 'Rua/Avenida, Número - Cidade, UF', // TODO: Substituir pelo endereço real
+  INSCRICAO_ESTADUAL: '00.000.000.000.000', // TODO: Substituir pela inscrição estadual real
+  MENSAGEM_RODAPE: 'Obrigado pela preferência!'
+};
+
 // Configurações de paginação
 export const PAGINATION = {
   DEFAULT_PAGE_SIZE: 20,

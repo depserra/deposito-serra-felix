@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprovante de Venda</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            color: #333;
+            background: #fff;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* ===== CONFIGURAÇÕES PARA IMPRESSÃO A4 ===== */
+        @page {
+            size: A4;
+            margin: 0;
+            padding: 0;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+            }
+            
+            .container {
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+                page-break-after: avoid;
+            }
+        }
+
+        /* ===== CONTAINER PRINCIPAL ===== */
+        .container {
+            width: 210mm;
+            height: 297mm;
+            margin: 0 auto;
+            padding: 20mm;
+            background: #ffffff;
+            color: #333;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        /* ===== CABEÇALHO ===== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15mm;
+            padding-bottom: 8mm;
+            border-bottom: 3px solid #FF6B00;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: flex-start;
+            gap: 10mm;
+            flex: 1;
+        }
+
+        .logo {
+            width: 35mm;
+            height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo img {
+            max-width: 100%;
+            max-height: 50mm;
+        }
+
+        .company-info {
+            font-size: 10px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .company-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #FF6B00;
+            margin-bottom: 3mm;
+            text-transform: uppercase;
+        }
+
+        .company-info-item {
+            display: flex;
+            gap: 2mm;
+            margin-bottom: 1.5mm;
+        }
+
+        .company-info-label {
+            font-weight: 600;
+            color: #333;
+            min-width: 25mm;
+        }
+
+        .company-info-value {
+            color: #555;
+        }
+
+        /* ===== TÍTULO PRINCIPAL ===== */
+        .document-title {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 8mm;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ===== NÚMERO DA VENDA (BOX) ===== */
+        .venda-number-box {
+            position: absolute;
+            top: 20mm;
+            right: 20mm;
+            width: 50mm;
+            padding: 6mm 8mm;
+            border: 2px solid #FF6B00;
+            text-align: center;
+            background: #fff;
+        }
+
+        .venda-number-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: #FF6B00;
+            text-transform: uppercase;
+            margin-bottom: 2mm;
+        }
+
+        .venda-number {
+            font-size: 22px;
+            font-weight: 700;
+            color: #FF6B00;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        /* ===== INFO VENDA (DATA/HORA) ===== */
+        .info-venda {
+            display: flex;
+            gap: 15mm;
+            margin-bottom: 12mm;
+            padding: 8mm 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .info-venda-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 3mm;
+            flex: 1;
+        }
+
+        .info-venda-icon {
+            width: 6mm;
+            height: 6mm;
+            background: #FF6B00;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 0.5mm;
+        }
+
+        .info-venda-content {
+            flex: 1;
+        }
+
+        .info-venda-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 1mm;
+        }
+
+        .info-venda-value {
+            font-size: 11px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        /* ===== SEÇÃO CLIENTE ===== */
+        .cliente-section {
+            margin-bottom: 10mm;
+            padding-bottom: 8mm;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #FF6B00;
+            text-transform: uppercase;
+            margin-bottom: 4mm;
+            letter-spacing: 0.5px;
+        }
+
+        .cliente-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8mm;
+        }
+
+        .cliente-item {
+            font-size: 10px;
+        }
+
+        .cliente-item-label {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 1.5mm;
+            text-transform: uppercase;
+            font-size: 9px;
+        }
+
+        .cliente-item-value {
+            color: #555;
+            font-size: 10px;
+            line-height: 1.5;
+        }
+
+        /* ===== TABELA PRODUTOS ===== */
+        .produtos-section {
+            margin-bottom: 10mm;
+            page-break-inside: avoid;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 4mm;
+        }
+
+        thead {
+            background: #FF6B00;
+            color: #ffffff;
+        }
+
+        th {
+            padding: 4mm 3mm;
+            text-align: left;
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border: none;
+        }
+
+        th.text-right {
+            text-align: right;
+            padding-right: 4mm;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #e8e8e8;
+            height: 8mm;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        td {
+            padding: 3mm;
+            font-size: 10px;
+            color: #333;
+            vertical-align: middle;
+        }
+
+        td.text-right {
+            text-align: right;
+            padding-right: 4mm;
+        }
+
+        td.text-center {
+            text-align: center;
+        }
+
+        /* ===== RESUMO FINANCEIRO ===== */
+        .resumo-section {
+            margin-bottom: 10mm;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .resumo-box {
+            width: 70mm;
+            border: 1px solid #e0e0e0;
+        }
+
+        .resumo-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4mm;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 10px;
+        }
+
+        .resumo-item-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .resumo-item-value {
+            font-weight: 600;
+            color: #333;
+            text-align: right;
+        }
+
+        .resumo-total {
+            background: #FF6B00;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 5mm 4mm;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: none;
+        }
+
+        .resumo-total .resumo-item-label {
+            color: #ffffff;
+        }
+
+        .resumo-total .resumo-item-value {
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        /* ===== INFORMAÇÕES PAGAMENTO ===== */
+        .pagamento-section {
+            background: #fff8f5;
+            border: 1px solid #FFD4A3;
+            border-radius: 3px;
+            padding: 8mm;
+            margin-bottom: 10mm;
+            display: flex;
+            gap: 8mm;
+        }
+
+        .pagamento-icon {
+            width: 8mm;
+            height: 8mm;
+            background: #FF6B00;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 1mm;
+        }
+
+        .pagamento-content {
+            flex: 1;
+        }
+
+        .pagamento-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #FF6B00;
+            text-transform: uppercase;
+            margin-bottom: 4mm;
+        }
+
+        .pagamento-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 4mm;
+        }
+
+        .pagamento-item {
+            font-size: 9px;
+        }
+
+        .pagamento-item-label {
+            font-weight: 700;
+            color: #333;
+            text-transform: uppercase;
+            margin-bottom: 1mm;
+        }
+
+        .pagamento-item-value {
+            color: #555;
+            font-size: 10px;
+        }
+
+        /* ===== RODAPÉ ===== */
+        .footer {
+            text-align: center;
+            font-size: 9px;
+            color: #666;
+            margin-top: 15mm;
+            padding-top: 8mm;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .footer-icon {
+            width: 12mm;
+            height: auto;
+            margin: 0 auto 4mm;
+            display: flex;
+            justify-content: center;
+        }
+
+        .footer-message {
+            font-weight: 600;
+            color: #FF6B00;
+            font-size: 10px;
+            margin-bottom: 2mm;
+        }
+
+        .footer-note {
+            font-size: 9px;
+            color: #888;
+            line-height: 1.5;
+        }
+
+        .footer-credit {
+            font-size: 8px;
+            color: #aaa;
+            margin-top: 4mm;
+        }
+
+        /* ===== UTILIDADES ===== */
+        .mb-1 { margin-bottom: 1mm; }
+        .mb-2 { margin-bottom: 2mm; }
+        .mb-4 { margin-bottom: 4mm; }
+        .mt-2 { margin-top: 2mm; }
+        .font-bold { font-weight: 700; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        /* ===== COMPATIBILIDADE IMPRESSÃO ===== */
+        @media print {
+            body {
+                background: white;
+            }
+
+            .container {
+                box-shadow: none;
+                margin: 0;
+                width: 100%;
+                height: 100%;
+                padding: 20mm;
+            }
+
+            .venda-number-box {
+                position: relative;
+                top: auto;
+                right: auto;
+                float: right;
+                margin-bottom: 10mm;
+            }
+
+            table {
+                page-break-inside: avoid;
+            }
+
+            .produtos-section {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- NÚMERO DA VENDA (BOX) -->
+        <div class="venda-number-box">
+            <div class="venda-number-label">Nº DA VENDA</div>
+            <div class="venda-number">{{venda_numero}}</div>
+        </div>
+
+        <!-- CABEÇALHO -->
+        <div class="header">
+            <div class="header-left">
+                <div class="logo">
+                    {{logo_empresa}}
+                </div>
+                <div class="company-info">
+                    <div class="company-name">Serra do Félix Materiais de Construção LTDA</div>
+                    <div class="company-info-item">
+                        <span class="company-info-label">CNPJ:</span>
+                        <span class="company-info-value">12.345.678/0001-90</span>
+                    </div>
+                    <div class="company-info-item">
+                        <span class="company-info-label">IE:</span>
+                        <span class="company-info-value">123456789</span>
+                    </div>
+                    <div class="company-info-item">
+                        <span class="company-info-label"></span>
+                        <span class="company-info-value" style="font-weight: 600;">Rua das Pedras, 456 – Centro</span>
+                    </div>
+                    <div class="company-info-item">
+                        <span class="company-info-label"></span>
+                        <span class="company-info-value">Chorozinho - CE - CEP: 62.875-000</span>
+                    </div>
+                    <div class="company-info-item">
+                        <span class="company-info-label"></span>
+                        <span class="company-info-value">(85) 9.8173-2039</span>
+                    </div>
+                    <div class="company-info-item">
+                        <span class="company-info-label"></span>
+                        <span class="company-info-value">@_depositosserradofelix</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TÍTULO -->
+        <div class="document-title" style="margin-top: -5mm;">NOTA DE VENDA / COMPROVANTE DE VENDA</div>
+
+        <!-- INFORMAÇÕES DA VENDA (Data/Hora) -->
+        <div class="info-venda">
+            <div class="info-venda-item" style="max-width: 60mm;">
+                <div class="info-venda-icon"></div>
+                <div class="info-venda-content">
+                    <div class="info-venda-label">Data da Venda</div>
+                    <div class="info-venda-value">{{data_venda}}</div>
+                </div>
+            </div>
+            <div class="info-venda-item" style="max-width: 60mm;">
+                <div class="info-venda-icon"></div>
+                <div class="info-venda-content">
+                    <div class="info-venda-label">Hora</div>
+                    <div class="info-venda-value">{{hora_venda}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DADOS DO CLIENTE -->
+        <div class="cliente-section">
+            <div class="section-title">Dados do Cliente</div>
+            <div class="cliente-grid">
+                <div class="cliente-item">
+                    <div class="cliente-item-label">Nome / Razão Social</div>
+                    <div class="cliente-item-value">{{cliente_nome}}</div>
+                </div>
+                <div class="cliente-item">
+                    <div class="cliente-item-label">CPF / CNPJ</div>
+                    <div class="cliente-item-value">{{cliente_cpf_cnpj}}</div>
+                </div>
+                <div class="cliente-item">
+                    <div class="cliente-item-label">Endereço</div>
+                    <div class="cliente-item-value">{{cliente_endereco}}</div>
+                </div>
+                <div class="cliente-item">
+                    <div class="cliente-item-label">Cidade / UF</div>
+                    <div class="cliente-item-value">{{cliente_cidade}} - {{cliente_uf}}</div>
+                </div>
+                <div class="cliente-item">
+                    <div class="cliente-item-label">CEP</div>
+                    <div class="cliente-item-value">{{cliente_cep}}</div>
+                </div>
+                <div class="cliente-item">
+                    <div class="cliente-item-label">Telefone</div>
+                    <div class="cliente-item-value">{{cliente_telefone}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABELA DE PRODUTOS -->
+        <div class="produtos-section">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Código</th>
+                        <th style="width: 40%;">Descrição do Produto</th>
+                        <th style="width: 8%; text-align: center;">Un</th>
+                        <th style="width: 12%; text-align: right;">Qtd</th>
+                        <th style="width: 15%; text-align: right;">Vlr Unit.</th>
+                        <th style="width: 15%; text-align: right;">Vlr Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{produtos_linhas}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- RESUMO FINANCEIRO -->
+        <div class="resumo-section">
+            <div class="resumo-box">
+                <div class="resumo-item">
+                    <span class="resumo-item-label">Subtotal:</span>
+                    <span class="resumo-item-value">{{subtotal}}</span>
+                </div>
+                {{desconto_linha}}
+                <div class="resumo-total">
+                    <span class="resumo-item-label">TOTAL GERAL:</span>
+                    <span class="resumo-item-value">{{total_geral}}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- INFORMAÇÕES DE PAGAMENTO -->
+        <div class="pagamento-section">
+            <div class="pagamento-icon"></div>
+            <div class="pagamento-content">
+                <div class="pagamento-title">Informações de Pagamento</div>
+                <div class="pagamento-grid">
+                    <div class="pagamento-item">
+                        <div class="pagamento-item-label">Forma de Pagamento</div>
+                        <div class="pagamento-item-value">{{forma_pagamento}}</div>
+                    </div>
+                    <div class="pagamento-item">
+                        <div class="pagamento-item-label">Valor Pago</div>
+                        <div class="pagamento-item-value">{{valor_pago}}</div>
+                    </div>
+                    <div class="pagamento-item">
+                        <div class="pagamento-item-label">Troco</div>
+                        <div class="pagamento-item-value">{{troco}}</div>
+                    </div>
+                    <div class="pagamento-item">
+                        <div class="pagamento-item-label">Situação</div>
+                        <div class="pagamento-item-value">{{situacao_pagamento}}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RODAPÉ -->
+        <div class="footer">
+            <div class="footer-message">Obrigado pela preferência!</div>
+            <div class="footer-note">Este comprovante não possui valor fiscal.</div>
+            <div class="footer-credit">Emitido por: Sistema Gestão Fácil<br>www.sistemagestaofacil.com.br</div>
+        </div>
+    </div>
+</body>
+</html>
