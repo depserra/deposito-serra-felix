@@ -1,49 +1,45 @@
-// Configuração do Firebase (substitua com suas credenciais)
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
-import { getApp } from "firebase/app";
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCMzQvw7qcxw6tB-P6y6HC5X6uH2ZW4-go",
-  authDomain: "deposito-serra-felix.firebaseapp.com",
-  projectId: "deposito-serra-felix",
-  storageBucket: "deposito-serra-felix.firebasestorage.app",
-  messagingSenderId: "536757368497",
-  appId: "1:536757368497:web:a836ba88591bc3caf25490"
+// ─── Depósito Serra Félix ─────────────────────────────────────────────────────
+const firebaseConfigDeposito = {
+  apiKey: "AIzaSyCbH1440LSYJqZJSkkutT_o5q6u22lK2QY",
+  authDomain: "deposito-serra-do-felix.firebaseapp.com",
+  projectId: "deposito-serra-do-felix",
+  storageBucket: "deposito-serra-do-felix.firebasestorage.app",
+  messagingSenderId: "412648694325",
+  appId: "1:412648694325:web:a3749d6e8274e84047477c",
+  measurementId: "G-CY9DJBZG00"
 };
 
-// Initialize Firebase
-let app;
-try {
-  app = initializeApp(firebaseConfig);
-} catch (error) {
-  if (error.code === 'app/duplicate-app') {
-    // Se já estiver inicializado, usa a instância existente
-    app = getApp();
-  } else {
-    throw error;
-  }
-}
+// ─── Casa de Ração ────────────────────────────────────────────────────────────
+const firebaseConfigRacao = {
+  apiKey: "AIzaSyDcfcxAZ21z2wy9FRDv2YyyZ71Gp53hag0",
+  authDomain: "casa-de-racao-2f709.firebaseapp.com",
+  projectId: "casa-de-racao-2f709",
+  storageBucket: "casa-de-racao-2f709.firebasestorage.app",
+  messagingSenderId: "791716625966",
+  appId: "1:791716625966:web:ac32b6f75d87df9a2a29bf"
+};
 
-// Inicialização dos serviços com cache
-export const db = getFirestore(app);
-export const auth = getAuth(app);
-export const storage = getStorage(app);
+// ─── Inicialização dos apps ───────────────────────────────────────────────────
+const appDeposito = getApps().find(a => a.name === '[DEFAULT]')
+  ?? initializeApp(firebaseConfigDeposito);
 
-// Habilitar persistência offline (apenas no browser)
-if (typeof window !== 'undefined') {
-  import('firebase/firestore').then(({ enableNetwork, disableNetwork }) => {
-    // Tentar habilitar cache persistente
-    try {
-      // O Firestore já tem cache automático habilitado por padrão
-    } catch (err) {
-      // Cache já estava habilitado ou erro silencioso
-    }
-  }).catch(err => {
-    // Erro silencioso ao importar funcionalidades offline
-  });
-}
+const appRacao = getApps().find(a => a.name === 'racao')
+  ?? initializeApp(firebaseConfigRacao, 'racao');
+
+// ─── Exports ──────────────────────────────────────────────────────────────────
+// Auth fica no projeto principal (Depósito) — login compartilhado
+export const auth = getAuth(appDeposito);
+export const storage = getStorage(appDeposito);
+
+// Um Firestore por sistema
+export const dbDeposito = getFirestore(appDeposito);
+export const dbRacao    = getFirestore(appRacao);
+
+// Compatibilidade retroativa: exporta `db` como alias do Depósito
+// (usado em arquivos que ainda não foram migrados para useSystem)
+export const db = dbDeposito;

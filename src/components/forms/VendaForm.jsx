@@ -2,14 +2,30 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { vendaSchema } from '../../utils/schemas';
-import { Plus, Trash2, UserPlus, CheckCircle, Circle } from 'lucide-react';
+import { Plus, Trash2, UserPlus, CheckCircle, Circle, Scale } from 'lucide-react';
 import Modal from '../modals/Modal';
 import ClienteForm from './ClienteForm';
 import { useClientes } from '../../hooks/useClientes';
 import { useEstoque } from '../../hooks/useEstoque';
 import { useFinanceiro } from '../../hooks/useFinanceiro';
+import { useSystem } from '../../contexts/SystemContext';
 import { db } from '../../services/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+
+const extrairPesoDoNome = (nome) => {
+  if (!nome) return 1;
+  const match = nome.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|kilos|kilo|g)\b/i);
+  if (match) {
+    let num = parseFloat(match[1].replace(',', '.'));
+    const unitMatch = match[0].toLowerCase();
+    // se for em gramas (ex: 500g), converte para kg
+    if (unitMatch.includes('g') && !unitMatch.includes('kg')) {
+      num = num / 1000;
+    }
+    return num;
+  }
+  return 1;
+};
 
 export default function VendaForm({ onSubmit, clientes, initialData, onClienteAdicionado, onReloadVendas }) {
   const [showClienteModal, setShowClienteModal] = useState(false);
@@ -19,6 +35,10 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
   const [mostrarParcelamento, setMostrarParcelamento] = useState(false);
   const [mostrarJurosCartao, setMostrarJurosCartao] = useState(false);
   const [parcelas, setParcelas] = useState([]);
+  // valoresFracionados: { [index]: { peso: string, valor: string } }
+  const [valoresFracionados, setValoresFracionados] = useState({});
+  const { activeSystem } = useSystem();
+  const isRacao = activeSystem?.id === 'racao';
   const { adicionarCliente } = useClientes();
   const { produtos, listarProdutos } = useEstoque();
   const { contasReceber, listarContasReceber, receberConta } = useFinanceiro();
@@ -102,11 +122,34 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
 
     // Só atualiza o formulário se os produtos já foram carregados (quando editando)
     if (initialData && (!initialData.itens || initialData.itens.length === 0 || produtos.length > 0)) {
-      const itensFormatados = (initialData.itens || []).map(item => ({
-        produto: item.produto || item.produtoId || item.id || '',
-        quantidade: item.quantidade ? Math.round(Number(item.quantidade)) : '',
-        valorUnitario: item.valorUnitario || item.preco || ''
-      }));
+      const initialFracionados = {};
+      const itensFormatados = (initialData.itens || []).map((item, index) => {
+        const produtoId = item.produto || item.produtoId || item.id || '';
+        const quantidade = item.quantidade ? Number(item.quantidade) : '';
+        const valorUnitario = item.valorUnitario || item.preco || '';
+        
+        // Inicializa estado fracionado se for um produto da casa de ração
+        if (produtoId && isRacao) {
+          const produto = produtos.find(p => p.id === produtoId);
+          if (produto && quantidade !== '') {
+            const pesoBase = extrairPesoDoNome(produto.nome);
+            const isVendidoEmKg = produto.unidade?.toLowerCase() === 'kg' || produto.unidade?.toLowerCase() === 'g';
+            const pesoCalculado = isVendidoEmKg ? quantidade : quantidade * pesoBase;
+            const valorTotalItem = (parseFloat(valorUnitario) || produto.precoVenda || 0) * quantidade;
+            initialFracionados[index] = {
+              peso: pesoCalculado > 0 ? pesoCalculado.toFixed(3) : '',
+              valor: valorTotalItem > 0 ? valorTotalItem.toFixed(2) : ''
+            };
+          }
+        }
+        
+        return {
+          produto: produtoId,
+          quantidade,
+          valorUnitario
+        };
+      });
+      setValoresFracionados(initialFracionados);
 
       reset({
         clienteId: initialData.clienteId || '',
@@ -182,12 +225,68 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
         calcularTotal();
       }
     }
+    // Limpa estado fracionado ao trocar de produto
+    setValoresFracionados(prev => { const n = { ...prev }; delete n[index]; return n; });
     // Limpa erro de estoque ao mudar o produto
     setErrosEstoque(prev => {
       const novos = { ...prev };
       delete novos[index];
       return novos;
     });
+  };
+
+  // Usuário digitou valor em kg → recalcula valor em R$ e ajusta a fração (quantidade)
+  const handleFracionadoPeso = (index, pesoStr) => {
+    const peso = parseFloat(pesoStr) || 0;
+    const produtoId = watch(`itens.${index}.produto`);
+    const produto = produtos.find(p => p.id === produtoId);
+    if (!produto) return;
+    
+    const pesoBase = extrairPesoDoNome(produto.nome);
+    const isVendidoEmKg = produto.unidade?.toLowerCase() === 'kg' || produto.unidade?.toLowerCase() === 'g';
+    const precoKg = isVendidoEmKg ? (produto.precoVenda || 0) : ((produto.precoVenda || 0) / pesoBase);
+    
+    const valorCalculado = peso * precoKg;
+    const quantidadeParaOForm = isVendidoEmKg ? peso : (pesoBase > 0 ? peso / pesoBase : 0);
+
+    setValoresFracionados(prev => ({
+      ...prev,
+      [index]: {
+        peso: pesoStr,
+        valor: pesoStr === '' ? '' : (valorCalculado > 0 ? valorCalculado.toFixed(2) : '0.00')
+      }
+    }));
+    
+    setValue(`itens.${index}.quantidade`, quantidadeParaOForm);
+    setValue(`itens.${index}.valorUnitario`, produto.precoVenda);
+    calcularTotal();
+  };
+
+  // Usuário digitou valor em R$ → recalcula peso em kg e ajusta a fração (quantidade)
+  const handleFracionadoValor = (index, valorStr) => {
+    const valor = parseFloat(valorStr) || 0;
+    const produtoId = watch(`itens.${index}.produto`);
+    const produto = produtos.find(p => p.id === produtoId);
+    if (!produto) return;
+
+    const pesoBase = extrairPesoDoNome(produto.nome);
+    const isVendidoEmKg = produto.unidade?.toLowerCase() === 'kg' || produto.unidade?.toLowerCase() === 'g';
+    const precoKg = isVendidoEmKg ? (produto.precoVenda || 0) : ((produto.precoVenda || 0) / pesoBase);
+    
+    const pesoCalculado = precoKg > 0 ? valor / precoKg : 0;
+    const quantidadeParaOForm = isVendidoEmKg ? pesoCalculado : (pesoBase > 0 ? pesoCalculado / pesoBase : 0);
+
+    setValoresFracionados(prev => ({
+      ...prev,
+      [index]: {
+        peso: valorStr === '' ? '' : (pesoCalculado > 0 ? pesoCalculado.toFixed(3) : '0.000'),
+        valor: valorStr
+      }
+    }));
+
+    setValue(`itens.${index}.quantidade`, quantidadeParaOForm);
+    setValue(`itens.${index}.valorUnitario`, produto.precoVenda);
+    calcularTotal();
   };
 
   // Função para validar quantidade do estoque
@@ -554,7 +653,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
                       <option value="">Selecione o produto</option>
                       {produtos.map(produto => (
                         <option key={produto.id} value={produto.id}>
-                          {produto.nome} - Estoque: {produto.quantidade} {produto.unidade}
+                          {produto.nome} - Estoque: {typeof produto.quantidade === 'number' && produto.quantidade % 1 !== 0 ? parseFloat(produto.quantidade.toFixed(3)) : (produto.quantidade || 0)} {produto.unidade}
                         </option>
                       ))}
                     </select>
@@ -572,65 +671,112 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
                     )}
                   </div>
 
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Quantidade *
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="999999999"
-                      step="1"
-                      placeholder="0"
-                      onWheel={(e) => e.target.blur()}
-                      className={`w-full px-4 py-2 bg-white dark:bg-slate-700 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 ${
-                        errosEstoque[index] 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-slate-200 dark:border-slate-600 focus:ring-orange-500'
-                      }`}
-                      {...register(`itens.${index}.quantidade`, {
-                        onChange: calcularTotal,
-                        onBlur: (e) => validarQuantidadeEstoque(index, e.target.value)
-                      })}
-                    />
-                    {errosEstoque[index] && (
-                      <p className="mt-1 text-sm text-red-600 font-medium">
-                        {errosEstoque[index]}
-                      </p>
-                    )}
-                    {errors.itens?.[index]?.quantidade && !errosEstoque[index] && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {errors.itens[index].quantidade.message}
-                      </p>
-                    )}
-                  </div>
+                  {isRacao && produtoSelecionado ? (
+                    <div className="md:col-span-5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-3">
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-green-200 dark:border-green-800">
+                        <Scale size={16} className="text-green-600 dark:text-green-400" />
+                        <span className="text-xs font-semibold text-green-800 dark:text-green-300">
+                          {extrairPesoDoNome(produtoSelecionado.nome) !== 1 
+                            ? `Produto vendido no peso (1 unidade = ${extrairPesoDoNome(produtoSelecionado.nome)}kg)`
+                            : `Venda unitária rápida`}
+                        </span>
+                      </div>
 
-                  <div className="md:col-span-3">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Valor Unitário *
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-white">R$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0,00"
-                        onWheel={(e) => e.target.blur()}
-                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                        readOnly
-                        {...register(`itens.${index}.valorUnitario`, {
-                          valueAsNumber: true,
-                          onChange: calcularTotal
-                        })}
-                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Qtd / Peso (kg) *</label>
+                          <input
+                            type="number" step="0.001" min="0" 
+                            value={valoresFracionados[index]?.peso ?? ''} 
+                            onChange={(e) => handleFracionadoPeso(index, e.target.value)}
+                            onWheel={(e) => e.target.blur()}
+                            className={`w-full px-3 py-1.5 bg-white dark:bg-slate-700 border rounded-lg text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 ${errosEstoque[index] ? 'border-red-500 focus:ring-red-500' : 'border-green-300 dark:border-green-600 focus:ring-green-500'}`}
+                            placeholder="0.000"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Valor (R$) *</label>
+                          <input
+                            type="number" step="0.01" min="0" 
+                            value={valoresFracionados[index]?.valor ?? ''} 
+                            onChange={(e) => handleFracionadoValor(index, e.target.value)}
+                            onWheel={(e) => e.target.blur()}
+                            className={`w-full px-3 py-1.5 bg-white dark:bg-slate-700 border rounded-lg text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 ${errosEstoque[index] ? 'border-red-500 focus:ring-red-500' : 'border-green-300 dark:border-green-600 focus:ring-green-500'}`}
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Campos ocultos do formulário e validação de estoque */}
+                      <input type="hidden" {...register(`itens.${index}.quantidade`)} />
+                      <input type="hidden" {...register(`itens.${index}.valorUnitario`, { valueAsNumber: true })} />
+                      {errosEstoque[index] && <p className="mt-2 text-xs text-red-600 font-medium">{errosEstoque[index]}</p>}
+                      {errors.itens?.[index]?.quantidade && !errosEstoque[index] && <p className="mt-1 text-xs text-red-600">{errors.itens[index].quantidade.message}</p>}
+                      {errors.itens?.[index]?.valorUnitario && !errosEstoque[index] && <p className="mt-1 text-xs text-red-600">{errors.itens[index].valorUnitario.message}</p>}
                     </div>
-                    {errors.itens?.[index]?.valorUnitario && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {errors.itens[index].valorUnitario.message}
-                      </p>
-                    )}
-                  </div>
+                  ) : (
+                    <>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                          Quantidade *
+                        </label>
+                        <input
+                          type="number"
+                          min="0.001"
+                          max="999999999"
+                          step="any"
+                          placeholder="0"
+                          onWheel={(e) => e.target.blur()}
+                          className={`w-full px-4 py-2 bg-white dark:bg-slate-700 border rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 ${
+                            errosEstoque[index] 
+                              ? 'border-red-500 focus:ring-red-500' 
+                              : 'border-slate-200 dark:border-slate-600 focus:ring-orange-500'
+                          }`}
+                          {...register(`itens.${index}.quantidade`, {
+                            onChange: calcularTotal,
+                            onBlur: (e) => validarQuantidadeEstoque(index, e.target.value)
+                          })}
+                        />
+                        {errosEstoque[index] && (
+                          <p className="mt-1 text-sm text-red-600 font-medium">
+                            {errosEstoque[index]}
+                          </p>
+                        )}
+                        {errors.itens?.[index]?.quantidade && !errosEstoque[index] && (
+                          <p className="mt-1 text-sm text-red-600">
+                            {errors.itens[index].quantidade.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="md:col-span-3">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                          Valor Unitário *
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-white">R$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0,00"
+                            onWheel={(e) => e.target.blur()}
+                            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            readOnly
+                            {...register(`itens.${index}.valorUnitario`, {
+                              valueAsNumber: true,
+                              onChange: calcularTotal
+                            })}
+                          />
+                        </div>
+                        {errors.itens?.[index]?.valorUnitario && (
+                          <p className="mt-1 text-sm text-red-600">
+                            {errors.itens[index].valorUnitario.message}
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
 
                   <div className="md:col-span-2 flex items-end">
                     {fields.length > 1 && (

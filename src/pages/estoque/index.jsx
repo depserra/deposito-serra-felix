@@ -135,25 +135,26 @@ export default function Estoque() {
           </button>
         </div>
 
-        {/* Formulário */}
-        {mostrarFormulario && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-2 h-8 bg-orange-500 rounded-full"></div>
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                {produtoParaEditar ? 'Editar Produto' : 'Novo Produto'}
-              </h2>
-            </div>
-            <ProdutoForm
-              onSubmit={handleSubmit}
-              initialData={produtoParaEditar}
-              onCancel={() => {
-                setMostrarFormulario(false);
-                setProdutoParaEditar(null);
-              }}
-            />
-          </div>
-        )}
+        {/* Formulário (Modal) */}
+        <Modal
+          isOpen={mostrarFormulario}
+          onClose={() => {
+            setMostrarFormulario(false);
+            setProdutoParaEditar(null);
+          }}
+          title={produtoParaEditar ? 'Editar Produto' : 'Novo Produto'}
+          size="xl"
+        >
+          <ProdutoForm
+            key={produtoParaEditar ? produtoParaEditar.id : 'novo'}
+            onSubmit={handleSubmit}
+            initialData={produtoParaEditar}
+            onCancel={() => {
+              setMostrarFormulario(false);
+              setProdutoParaEditar(null);
+            }}
+          />
+        </Modal>
 
         {/* Cards de Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -328,7 +329,9 @@ export default function Estoque() {
                             <span className={`font-semibold ${
                               zerado ? 'text-red-600' : baixoEstoque ? 'text-orange-600' : 'text-slate-900 dark:text-slate-100'
                             }`}>
-                              {produto.quantidade || 0} {produto.unidade || 'un'}
+                              {typeof produto.quantidade === 'number' && produto.quantidade % 1 !== 0 
+                                ? parseFloat(produto.quantidade.toFixed(3)) 
+                                : (produto.quantidade || 0)} {produto.unidade || 'un'}
                             </span>
                             {baixoEstoque && !zerado && (
                               <AlertTriangle className="text-orange-500" size={16} />
@@ -417,11 +420,19 @@ export default function Estoque() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Quantidade Atual</label>
-                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{produtoDetalhes.quantidade || 0}</p>
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      {typeof produtoDetalhes.quantidade === 'number' && produtoDetalhes.quantidade % 1 !== 0 
+                        ? parseFloat(produtoDetalhes.quantidade.toFixed(3)) 
+                        : (produtoDetalhes.quantidade || 0)}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Estoque Mínimo</label>
-                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{produtoDetalhes.estoqueMinimo || 0}</p>
+                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                      {typeof produtoDetalhes.estoqueMinimo === 'number' && produtoDetalhes.estoqueMinimo % 1 !== 0 
+                        ? parseFloat(produtoDetalhes.estoqueMinimo.toFixed(3)) 
+                        : (produtoDetalhes.estoqueMinimo || 0)}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Status</label>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { 
   collection, 
   addDoc, 
@@ -12,7 +12,8 @@ import {
   serverTimestamp,
   writeBatch
 } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { useSystem } from '../contexts/SystemContext';
+import { dbDeposito } from '../services/firebase';
 
 export function useEstoque() {
   const [produtos, setProdutos] = useState([]);
@@ -21,17 +22,17 @@ export function useEstoque() {
   const [error, setError] = useState(null);
   const cacheRef = useRef({ data: null, timestamp: null });
 
-  // ============ PRODUTOS ============
+  const { activeSystem } = useSystem();
+  const db = activeSystem?.db ?? dbDeposito;
+  const col = (name) => collection(db, name);
+  const colDoc = (name, id) => doc(db, name, id);
 
-  // Invalidar cache
   const invalidarCache = useCallback(() => {
     cacheRef.current = { data: null, timestamp: null };
   }, []);
 
-  // Função para listar produtos
   const listarProdutos = useCallback(async (filtros = {}) => {
     try {
-      // Verificar cache (2 minutos) se não houver filtros e se não for forçada atualização
       const forcarAtualizacao = filtros.forcarAtualizacao;
       const temFiltros = filtros.categoria || filtros.estoqueMinimo || filtros.nome;
       const cache = cacheRef.current;
@@ -43,38 +44,23 @@ export function useEstoque() {
       setLoading(true);
       setError(null);
 
-      const produtosRef = collection(db, 'produtos');
-      let queryRef = query(produtosRef, orderBy('nome'));
-
-      // Aplicar filtros
-      if (filtros.categoria) {
-        queryRef = query(queryRef, where('categoriaId', '==', filtros.categoria));
-      }
-      if (filtros.estoqueMinimo) {
-        queryRef = query(queryRef, where('quantidade', '<=', filtros.estoqueMinimo));
-      }
+      let queryRef = query(col('produtos'), orderBy('nome'));
+      if (filtros.categoria) queryRef = query(queryRef, where('categoriaId', '==', filtros.categoria));
+      if (filtros.estoqueMinimo) queryRef = query(queryRef, where('quantidade', '<=', filtros.estoqueMinimo));
 
       const snapshot = await getDocs(queryRef);
-      let produtosData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      let produtosData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      // Filtro por nome (busca local para melhor performance)
       if (filtros.nome) {
-        const termoBusca = filtros.nome.toLowerCase().trim();
-        produtosData = produtosData.filter(produto => 
-          produto.nome?.toLowerCase().includes(termoBusca) ||
-          produto.codigo?.toLowerCase().includes(termoBusca) ||
-          produto.descricao?.toLowerCase().includes(termoBusca)
+        const termo = filtros.nome.toLowerCase().trim();
+        produtosData = produtosData.filter(p => 
+          p.nome?.toLowerCase().includes(termo) ||
+          p.codigo?.toLowerCase().includes(termo) ||
+          p.descricao?.toLowerCase().includes(termo)
         );
       }
 
-      // Atualizar cache se não houver filtros
-      if (!temFiltros) {
-        cacheRef.current = { data: produtosData, timestamp: Date.now() };
-      }
-      
+      if (!temFiltros) cacheRef.current = { data: produtosData, timestamp: Date.now() };
       setProdutos(produtosData);
       return produtosData;
     } catch (err) {
@@ -84,18 +70,13 @@ export function useEstoque() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [db]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Gera um código único de 5 dígitos
-  const gerarCodigoCompra = () => {
-    return Math.floor(10000 + Math.random() * 90000).toString();
-  };
+  const gerarCodigoCompra = () => Math.floor(10000 + Math.random() * 90000).toString();
 
-  // Função para adicionar produto
   async function adicionarProduto(dados) {
     try {
       setLoading(true);
-      
       const quantidade = parseInt(dados.quantidade) || 0;
       const precoCompra = parseFloat(dados.precoCompra) || 0;
       const valorTotal = quantidade * precoCompra;
@@ -105,79 +86,47 @@ export function useEstoque() {
         nome: dados.nome?.trim() || '',
         codigo: dados.codigo?.trim() || '',
         descricao: dados.descricao?.trim() || '',
-        quantidade: quantidade,
+        quantidade,
         estoqueMinimo: parseInt(dados.estoqueMinimo) || 0,
-        precoCompra: precoCompra,
+        precoCompra,
         precoVenda: parseFloat(dados.precoVenda) || 0,
-        ativo: dados.ativo !== false, // default true
+        ativo: dados.ativo !== false,
         criadoEm: serverTimestamp(),
         atualizadoEm: serverTimestamp()
       };
 
-      // Usar batch para garantir consistência
       const batch = writeBatch(db);
-      
-      // 1. Adicionar produto
-      const produtoRef = doc(collection(db, 'produtos'));
+      const produtoRef = doc(col('produtos'));
       batch.set(produtoRef, produtoData);
 
-      // 2. Se houver quantidade e preço de compra, registrar a compra automaticamente
       if (quantidade > 0 && precoCompra > 0) {
-        const compraRef = doc(collection(db, 'compras'));
+        const compraRef = doc(col('compras'));
         const codigoCompra = gerarCodigoCompra();
-        
-        const compraData = {
-          codigoCompra: codigoCompra,
-          fornecedor: dados.fornecedor?.trim() || 'Cadastro Inicial',
-          dataCompra: new Date(),
-          valorTotal: valorTotal,
+        batch.set(compraRef, {
+          codigoCompra, fornecedor: dados.fornecedor?.trim() || 'Cadastro Inicial',
+          dataCompra: new Date(), valorTotal,
           observacoes: `Compra automática - Cadastro inicial do produto: ${dados.nome?.trim() || ''}`,
-          produtoId: produtoRef.id,
-          nomeProduto: dados.nome?.trim() || '',
-          // Criar array itens para compatibilidade com a tela de compras
-          itens: [{
-            nomeProduto: dados.nome?.trim() || '',
-            categoria: dados.categoria?.trim() || '',
-            quantidade: quantidade,
-            valorCompra: precoCompra,
-            valorUnitario: precoCompra,
-            valorVenda: parseFloat(dados.precoVenda) || 0
-          }],
-          quantidade: quantidade,
-          valorCompra: precoCompra,
-          precoCompra: precoCompra,
+          produtoId: produtoRef.id, nomeProduto: dados.nome?.trim() || '',
+          itens: [{ nomeProduto: dados.nome?.trim() || '', categoria: dados.categoria?.trim() || '',
+            quantidade, valorCompra: precoCompra, valorUnitario: precoCompra,
+            valorVenda: parseFloat(dados.precoVenda) || 0 }],
+          quantidade, valorCompra: precoCompra, precoCompra,
           precoVenda: parseFloat(dados.precoVenda) || 0,
-          categoria: dados.categoria?.trim() || '',
-          criadoEm: new Date(),
-          atualizadoEm: new Date()
-        };
-        
-        batch.set(compraRef, compraData);
+          categoria: dados.categoria?.trim() || '', criadoEm: new Date(), atualizadoEm: new Date()
+        });
 
-        // 3. Registrar movimentação de estoque
-        const movimentacaoRef = doc(collection(db, 'movimentacoesEstoque'));
+        const movimentacaoRef = doc(col('movimentacoesEstoque'));
         batch.set(movimentacaoRef, {
-          produtoId: produtoRef.id,
-          produtoNome: dados.nome,
-          tipo: 'entrada',
-          quantidade: quantidade,
-          motivo: 'Cadastro inicial do produto',
-          compraId: compraRef.id,
-          codigoCompra: codigoCompra,
-          data: new Date()
+          produtoId: produtoRef.id, produtoNome: dados.nome, tipo: 'entrada',
+          quantidade, motivo: 'Cadastro inicial do produto', compraId: compraRef.id,
+          codigoCompra, data: new Date()
         });
       }
 
-      // Executar todas as operações
       await batch.commit();
-      
-      // Invalidar cache
       invalidarCache();
-      
-      // Atualizar estado local imediatamente
       const novoProduto = { id: produtoRef.id, ...produtoData };
       setProdutos(prev => [...prev, novoProduto]);
-      
       return novoProduto;
     } catch (err) {
       console.error('Erro ao adicionar produto:', err);
@@ -188,32 +137,22 @@ export function useEstoque() {
     }
   }
 
-  // Função para atualizar produto
   async function atualizarProduto(id, dados) {
     try {
       setLoading(true);
-      
       const dadosNormalizados = {
         ...dados,
-        nome: dados.nome?.trim() || '',
-        codigo: dados.codigo?.trim() || '',
-        descricao: dados.descricao?.trim() || '',
-        quantidade: parseInt(dados.quantidade) || 0,
+        nome: dados.nome?.trim() || '', codigo: dados.codigo?.trim() || '',
+        descricao: dados.descricao?.trim() || '', quantidade: parseInt(dados.quantidade) || 0,
         estoqueMinimo: parseInt(dados.estoqueMinimo) || 0,
         precoCompra: parseFloat(dados.precoCompra) || 0,
         precoVenda: parseFloat(dados.precoVenda) || 0,
         atualizadoEm: serverTimestamp()
       };
-
-      await updateDoc(doc(db, 'produtos', id), dadosNormalizados);
-      
-      // Invalidar cache
+      await updateDoc(colDoc('produtos', id), dadosNormalizados);
       invalidarCache();
-      
-      // Atualizar estado local imediatamente
       const produtoAtualizado = { id, ...dadosNormalizados };
       setProdutos(prev => prev.map(p => p.id === id ? produtoAtualizado : p));
-      
       return produtoAtualizado;
     } catch (err) {
       console.error('Erro ao atualizar produto:', err);
@@ -224,18 +163,12 @@ export function useEstoque() {
     }
   }
 
-  // Função para deletar produto
   async function deletarProduto(id) {
     try {
       setLoading(true);
-      await deleteDoc(doc(db, 'produtos', id));
-      
-      // Invalidar cache
+      await deleteDoc(colDoc('produtos', id));
       invalidarCache();
-      
-      // Atualizar estado local imediatamente
       setProdutos(prev => prev.filter(p => p.id !== id));
-      
       return true;
     } catch (err) {
       console.error('Erro ao deletar produto:', err);
@@ -246,36 +179,18 @@ export function useEstoque() {
     }
   }
 
-  // Função para ajustar estoque
   async function ajustarEstoque(produtoId, novaQuantidade, motivo = '') {
     try {
       setLoading(true);
-      
-      // Atualizar quantidade do produto
-      await updateDoc(doc(db, 'produtos', produtoId), {
-        quantidade: parseInt(novaQuantidade),
-        atualizadoEm: serverTimestamp()
+      await updateDoc(colDoc('produtos', produtoId), {
+        quantidade: parseInt(novaQuantidade), atualizadoEm: serverTimestamp()
       });
-
-      // Registrar movimento de estoque
-      const movimentoData = {
-        produtoId,
-        quantidade: parseInt(novaQuantidade),
-        motivo: motivo || 'Ajuste manual',
-        tipo: 'ajuste',
-        criadoEm: serverTimestamp()
-      };
-
-      await addDoc(collection(db, 'movimentosEstoque'), movimentoData);
-      
-      // Invalidar cache
+      await addDoc(col('movimentosEstoque'), {
+        produtoId, quantidade: parseInt(novaQuantidade),
+        motivo: motivo || 'Ajuste manual', tipo: 'ajuste', criadoEm: serverTimestamp()
+      });
       invalidarCache();
-      
-      // Atualizar estado local imediatamente
-      setProdutos(prev => prev.map(p => 
-        p.id === produtoId ? { ...p, quantidade: parseInt(novaQuantidade) } : p
-      ));
-      
+      setProdutos(prev => prev.map(p => p.id === produtoId ? { ...p, quantidade: parseInt(novaQuantidade) } : p));
       return true;
     } catch (err) {
       console.error('Erro ao ajustar estoque:', err);
@@ -286,23 +201,14 @@ export function useEstoque() {
     }
   }
 
-  // ============ CATEGORIAS ============
+  // ── Categorias ─────────────────────────────────────────────────────────────
 
-  // Função para listar categorias
   async function listarCategorias() {
     try {
       setLoading(true);
       setError(null);
-
-      const categoriasRef = collection(db, 'categorias');
-      const queryRef = query(categoriasRef, orderBy('nome'));
-
-      const snapshot = await getDocs(queryRef);
-      const categoriasData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
+      const snapshot = await getDocs(query(col('categorias'), orderBy('nome')));
+      const categoriasData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setCategorias(categoriasData);
       return categoriasData;
     } catch (err) {
@@ -314,21 +220,15 @@ export function useEstoque() {
     }
   }
 
-  // Função para adicionar categoria
   async function adicionarCategoria(dados) {
     try {
       setLoading(true);
-      
       const categoriaData = {
-        nome: dados.nome?.trim() || '',
-        descricao: dados.descricao?.trim() || '',
-        cor: dados.cor || '#3B82F6',
-        ativo: dados.ativo !== false,
-        criadoEm: serverTimestamp(),
-        atualizadoEm: serverTimestamp()
+        nome: dados.nome?.trim() || '', descricao: dados.descricao?.trim() || '',
+        cor: dados.cor || '#3B82F6', ativo: dados.ativo !== false,
+        criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp()
       };
-
-      const docRef = await addDoc(collection(db, 'categorias'), categoriaData);
+      const docRef = await addDoc(col('categorias'), categoriaData);
       return { id: docRef.id, ...categoriaData };
     } catch (err) {
       console.error('Erro ao adicionar categoria:', err);
@@ -339,19 +239,14 @@ export function useEstoque() {
     }
   }
 
-  // Função para atualizar categoria
   async function atualizarCategoria(id, dados) {
     try {
       setLoading(true);
-      
       const dadosNormalizados = {
-        ...dados,
-        nome: dados.nome?.trim() || '',
-        descricao: dados.descricao?.trim() || '',
+        ...dados, nome: dados.nome?.trim() || '', descricao: dados.descricao?.trim() || '',
         atualizadoEm: serverTimestamp()
       };
-
-      await updateDoc(doc(db, 'categorias', id), dadosNormalizados);
+      await updateDoc(colDoc('categorias', id), dadosNormalizados);
       return { id, ...dadosNormalizados };
     } catch (err) {
       console.error('Erro ao atualizar categoria:', err);
@@ -362,11 +257,10 @@ export function useEstoque() {
     }
   }
 
-  // Função para deletar categoria
   async function deletarCategoria(id) {
     try {
       setLoading(true);
-      await deleteDoc(doc(db, 'categorias', id));
+      await deleteDoc(colDoc('categorias', id));
       return true;
     } catch (err) {
       console.error('Erro ao deletar categoria:', err);
@@ -377,20 +271,14 @@ export function useEstoque() {
     }
   }
 
-  // ============ RELATÓRIOS ============
+  // ── Relatórios ─────────────────────────────────────────────────────────────
 
-  // Função para obter produtos com estoque baixo
   async function obterProdutosEstoqueBaixo() {
     try {
       setLoading(true);
-      const produtosRef = collection(db, 'produtos');
-      const snapshot = await getDocs(produtosRef);
-      
-      const produtosBaixoEstoque = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+      const snapshot = await getDocs(col('produtos'));
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(produto => produto.quantidade <= produto.estoqueMinimo);
-
-      return produtosBaixoEstoque;
     } catch (err) {
       console.error('Erro ao obter produtos com estoque baixo:', err);
       setError(err.message);
@@ -400,22 +288,16 @@ export function useEstoque() {
     }
   }
 
-  // Função para obter valor total do estoque
   async function obterValorTotalEstoque() {
     try {
       setLoading(true);
-      const produtosRef = collection(db, 'produtos');
-      const snapshot = await getDocs(produtosRef);
-      
-      let valorTotal = 0;
-      let valorCompra = 0;
-      
+      const snapshot = await getDocs(col('produtos'));
+      let valorTotal = 0, valorCompra = 0;
       snapshot.docs.forEach(doc => {
-        const produto = doc.data();
-        valorTotal += (produto.quantidade || 0) * (produto.precoVenda || 0);
-        valorCompra += (produto.quantidade || 0) * (produto.precoCompra || 0);
+        const p = doc.data();
+        valorTotal += (p.quantidade || 0) * (p.precoVenda || 0);
+        valorCompra += (p.quantidade || 0) * (p.precoCompra || 0);
       });
-
       return { valorTotal, valorCompra, lucroEstimado: valorTotal - valorCompra };
     } catch (err) {
       console.error('Erro ao calcular valor do estoque:', err);
@@ -427,28 +309,9 @@ export function useEstoque() {
   }
 
   return {
-    // Estados
-    produtos,
-    categorias, 
-    loading,
-    error,
-    
-    // Produtos
-    listarProdutos,
-    adicionarProduto,
-    atualizarProduto,
-    deletarProduto,
-    ajustarEstoque,
-    invalidarCache,
-    
-    // Categorias
-    listarCategorias,
-    adicionarCategoria,
-    atualizarCategoria,
-    deletarCategoria,
-    
-    // Relatórios
-    obterProdutosEstoqueBaixo,
-    obterValorTotalEstoque
+    produtos, categorias, loading, error,
+    listarProdutos, adicionarProduto, atualizarProduto, deletarProduto, ajustarEstoque, invalidarCache,
+    listarCategorias, adicionarCategoria, atualizarCategoria, deletarCategoria,
+    obterProdutosEstoqueBaixo, obterValorTotalEstoque
   };
 }

@@ -20,7 +20,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      navigate('/vendas');
+      navigate('/selecionar-sistema');
     } catch (error) {
       console.error('Erro ao fazer login:', error);
       

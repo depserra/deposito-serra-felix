@@ -1,15 +1,21 @@
 // filepath: src/hooks/useImportacaoNFe.js
 
 import { useState, useCallback } from 'react';
-import { db } from '../services/firebase';
 import { collection, addDoc, getDocs, query, where, doc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { parseNFeXML, processarProdutosNFe } from '../utils/parseNFeXML';
+import { useSystem } from '../contexts/SystemContext';
+import { dbDeposito } from '../services/firebase';
 
 export function useImportacaoNFe() {
   const [importando, setImportando] = useState(false);
   const [progresso, setProgresso] = useState(0);
   const [logImportacao, setLogImportacao] = useState([]);
   const [ultimoResultado, setUltimoResultado] = useState(null);
+
+  const { activeSystem } = useSystem();
+  const db = activeSystem?.db ?? dbDeposito;
+  const col = (name) => collection(db, name);
+  const colDoc = (name, id) => doc(db, name, id);
 
   // Adicionar mensagem ao log
   const adicionarLog = useCallback((mensagem, tipo = 'info') => {
@@ -68,7 +74,7 @@ export function useImportacaoNFe() {
         const batchCodigos = codigosUnicos.slice(0, 10);
         
         const q = query(
-          collection(db, 'produtos'),
+          col('produtos'),
           where('codigo', 'in', batchCodigos)
         );
         const snapshot = await getDocs(q);
@@ -107,7 +113,7 @@ export function useImportacaoNFe() {
           // Atualizar quantidade (somar)
           const novaQuantidade = produtoExistente.quantidade + prod.quantidade;
           
-          batch.update(doc(db, 'produtos', produtoExistente.id), {
+          batch.update(colDoc('produtos', produtoExistente.id), {
             ...prod,
             quantidade: novaQuantidade,
             atualizadoEm: serverTimestamp(),
@@ -118,7 +124,7 @@ export function useImportacaoNFe() {
           adicionarLog(`Atualizado: ${prod.nome} (quantidade: ${produtoExistente.quantidade} → ${novaQuantidade})`, 'warning');
         } else {
           // Criar novo produto
-          const novoProdRef = doc(collection(db, 'produtos'));
+          const novoProdRef = doc(col('produtos'));
           batch.set(novoProdRef, {
             ...prod,
             criadoEm: serverTimestamp(),

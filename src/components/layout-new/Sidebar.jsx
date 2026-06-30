@@ -11,6 +11,7 @@ import {
   X
 } from 'lucide-react';
 import Logo from '../ui/Logo';
+import { useSystem } from '../../contexts/SystemContext';
 
 const menuItems = [
   { icon: ShoppingCart, label: 'Vendas', path: '/vendas' },
@@ -24,6 +25,7 @@ const menuItems = [
 export default function Sidebar() {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const { activeSystem } = useSystem();
 
   return (
     <>
@@ -50,7 +52,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
         <Logo size="md" />
-        <p className="text-sm text-slate-500 dark:text-white mt-2">Sistema de Gestão</p>
+        <p className="text-sm text-slate-500 dark:text-white mt-2">{activeSystem?.name || 'Sistema de Gestão'}</p>
       </div>
       {/* Menu - Scrollable */}
       <nav className="flex-1 overflow-y-auto mt-6 px-4 pb-20">

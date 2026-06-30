@@ -1,7 +1,30 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useSystem } from '../../contexts/SystemContext';
+
+// Categorias por sistema
+const CATEGORIAS = {
+  deposito: [
+    'Cimento', 'Areia', 'Brita', 'Tijolo', 'Bloco', 'Ferro',
+    'Madeira', 'Tinta', 'Ferramentas', 'Hidráulica', 'Elétrica',
+    'Telha', 'Laje', 'Argamassa', 'Cal', 'Impermeabilizante',
+    'Parafusos e Pregos', 'Tubos e Conexões', 'Piso e Revestimento',
+    'Porta e Janela', 'Gesso', 'Drywall',
+  ],
+  racao: [
+    'Ração para Cão', 'Ração para Gato', 'Ração para Ave',
+    'Ração para Bovino', 'Ração para Suíno', 'Ração para Equino',
+    'Ração para Ovino / Caprino', 'Ração para Coelho',
+    'Suplemento Animal', 'Sal Mineral', 'Premix',
+    'Vacina e Medicamento', 'Antiparasitário', 'Vitaminas',
+    'Ração Artesanal / Natural', 'Petisco', 'Areia Higiênica',
+    'Cama para Animal', 'Acessório Pet', 'Inseto / Grilo',
+    'Sementes e Grãos', 'Adubos e Fertilizantes',
+    'Defensivo Agrícola', 'Equipamento Agropecuário',
+  ],
+};
 
 const produtoSchema = z.object({
   codigo: z.string().optional(),
@@ -18,21 +41,47 @@ const produtoSchema = z.object({
 });
 
 export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
+  const { activeSystem } = useSystem();
+  const isRacao = activeSystem?.id === 'racao';
+  const categoriasList = isRacao ? CATEGORIAS.racao : CATEGORIAS.deposito;
+  const categoriasPlaceholder = isRacao
+    ? 'Ex: Ração para Cão, Sal Mineral...'
+    : 'Ex: Cimento, Areia, Tijolo...';
+  const formattedInitialData = useMemo(() => {
+    if (!initialData) return null;
+    return {
+      codigo: initialData.codigo || '',
+      nome: initialData.nome || '',
+      descricao: initialData.descricao || '',
+      categoria: initialData.categoria || '',
+      unidade: initialData.unidade || 'un',
+      quantidade: (typeof initialData.quantidade === 'number' && initialData.quantidade % 1 !== 0) 
+        ? parseFloat(initialData.quantidade.toFixed(3)) 
+        : (initialData.quantidade || 0),
+      estoqueMinimo: initialData.estoqueMinimo || 0,
+      precoCompra: initialData.precoCompra || '',
+      precoVenda: initialData.precoVenda || '',
+      fornecedor: initialData.fornecedor || '',
+      localizacao: initialData.localizacao || ''
+    };
+  }, [initialData]);
+
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
     reset
   } = useForm({
     resolver: zodResolver(produtoSchema),
-    defaultValues: initialData || {
+    defaultValues: formattedInitialData || {
       codigo: '',
       nome: '',
       descricao: '',
       categoria: '',
       unidade: 'un',
-      quantidade: '',
-      estoqueMinimo: '',
+      quantidade: 0,
+      estoqueMinimo: 5,
       precoCompra: '',
       precoVenda: '',
       fornecedor: '',
@@ -40,11 +89,6 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
     }
   });
 
-  useEffect(() => {
-    if (initialData) {
-      reset(initialData);
-    }
-  }, [initialData, reset]);
 
   const onSubmitForm = async (data) => {
     try {
@@ -102,21 +146,14 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
             type="text"
             {...register('categoria')}
             className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-            placeholder="Ex: Cimento, Areia, Tijolo..."
+            placeholder={categoriasPlaceholder}
             list="categorias"
+            autoComplete="off"
           />
           <datalist id="categorias">
-            <option value="Cimento" />
-            <option value="Areia" />
-            <option value="Brita" />
-            <option value="Tijolo" />
-            <option value="Bloco" />
-            <option value="Ferro" />
-            <option value="Madeira" />
-            <option value="Tinta" />
-            <option value="Ferramentas" />
-            <option value="Hidráulica" />
-            <option value="Elétrica" />
+            {categoriasList.map((cat) => (
+              <option key={cat} value={cat} />
+            ))}
           </datalist>
           {errors.categoria && (
             <p className="mt-1 text-sm text-red-500">{errors.categoria.message}</p>
@@ -148,7 +185,6 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
         </div>
       </div>
 
-      {/* Estoque */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">

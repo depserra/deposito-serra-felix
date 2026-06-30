@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSystem } from '../../contexts/SystemContext';
 
 const Logo = ({ className = "", size = "md" }) => {
   const sizes = {
@@ -8,11 +9,16 @@ const Logo = ({ className = "", size = "md" }) => {
     xl: "h-48 w-auto"
   };
 
+  const { activeSystem } = useSystem();
+
+  const src = activeSystem?.logo ?? '/logo-serra-felix.png';
+  const alt = activeSystem?.logoAlt ?? 'Serra do Félix - Material de Construção';
+
   return (
     <div className={`flex items-center ${className}`}>
       <img 
-        src="/logo-serra-felix.png" 
-        alt="Serra do Félix - Material de Construção" 
+        src={src} 
+        alt={alt} 
         className={sizes[size]}
       />
     </div>

@@ -7,12 +7,14 @@ import {
   browserSessionPersistence
 } from 'firebase/auth';
 import { auth } from '../services/firebase';
+import { useSystem } from './SystemContext';
 
 const AuthContext = createContext({});
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { clearSystem } = useSystem();
 
   useEffect(() => {
     // Configurar persistência de sessão (desloga ao fechar o navegador)
@@ -39,6 +41,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
+      clearSystem();
       await signOut(auth);
     } catch (error) {
       console.error('Erro ao fazer logout:', error);

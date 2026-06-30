@@ -1,11 +1,41 @@
 import { formatCurrency } from './formatters.js';
 
+// Configurações padrão por sistema
+export const EMPRESA_CONFIGS = {
+  deposito: {
+    nome: 'Serra do Félix Materiais de Construção Ltda',
+    logoPath: '/logo-serra-felix.png',
+    logoAltText: 'Serra do Félix',
+    telefone: '(85) 9.8173-2039',
+    whatsapp: '(85) 9.8173-2039',
+    instagram: '_depositoserradofelix',
+    endereco: 'Rua das Pedras, 456 - Centro',
+    cidade: 'Chorozinho - CE',
+    cep: '62.875-000',
+    cnpj: '12.345.678/0001-90',
+    ie: '123456789',
+  },
+  racao: {
+    nome: 'Casa de Ração Agro Serra do Félix',
+    logoPath: '/logo-casa-racao.png',
+    logoAltText: 'Casa de Ração',
+    telefone: '(85) 9.8238-2670',
+    whatsapp: '(85) 9.8238-2670',
+    instagram: '@agro.serradofelix',
+    endereco: '',
+    cidade: '',
+    cep: '',
+    cnpj: '',
+    ie: '',
+  },
+};
+
 /**
  * Converte imagem local para base64 para embutir no HTML
  */
-async function getLogoBase64() {
+async function getLogoBase64(logoPath = '/logo-serra-felix.png') {
   try {
-    const response = await fetch('/logo-serra-felix.png');
+    const response = await fetch(logoPath);
     const blob = await response.blob();
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -21,12 +51,13 @@ async function getLogoBase64() {
 /**
  * Gera o HTML do comprovante com dados dinâmicos
  */
-async function gerarHTMLComprovante(venda, cliente, produtos = []) {
-  const logoBase64 = await getLogoBase64();
+async function gerarHTMLComprovante(venda, cliente, produtos = [], empresaConfig = EMPRESA_CONFIGS.deposito) {
+  const cfg = { ...EMPRESA_CONFIGS.deposito, ...empresaConfig };
+  const logoBase64 = await getLogoBase64(cfg.logoPath);
 
   const logoHTML = logoBase64
-    ? `<img src="${logoBase64}" alt="Serra do Félix" style="max-width:100%;max-height:100%;object-fit:contain;" />`
-    : `<div style="font-size:22px;font-weight:900;color:#FF6B00;line-height:1.1;font-family:Arial,sans-serif;">Serra<br><span style="font-size:16px;color:#333;">do Félix</span></div>`;
+    ? `<img src="${logoBase64}" alt="${cfg.logoAltText}" style="max-width:100%;max-height:100%;object-fit:contain;" />`
+    : `<div style="font-size:22px;font-weight:900;color:#FF6B00;line-height:1.1;font-family:Arial,sans-serif;">${cfg.logoAltText}</div>`;
 
   // Data/hora — suporte a Firestore Timestamp, ISO string e Date
   let dataVendaObj;
@@ -458,24 +489,24 @@ async function gerarHTMLComprovante(venda, cliente, produtos = []) {
       ${logoHTML}
     </div>
     <div class="header-empresa">
-      <div class="empresa-nome">Serra do Félix Materiais de Construção Ltda</div>
-      <div class="empresa-linha">
+      <div class="empresa-nome">${cfg.nome}</div>
+      ${cfg.cnpj ? `<div class="empresa-linha">
         <span class="empresa-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg></span>
-        <span>CNPJ: 12.345.678/0001-90 &nbsp;|&nbsp; IE: 123456789</span>
-      </div>
-      <div class="empresa-linha">
+        <span>CNPJ: ${cfg.cnpj}${cfg.ie ? ' &nbsp;|&nbsp; IE: ' + cfg.ie : ''}</span>
+      </div>` : ''}
+      ${cfg.endereco ? `<div class="empresa-linha">
         <span class="empresa-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg></span>
-        <span>Rua das Pedras, 456 - Centro<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Chorozinho - CE - CEP: 62.875-000</span>
-      </div>
+        <span>${cfg.endereco}<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${cfg.cidade}${cfg.cep ? ' - CEP: ' + cfg.cep : ''}</span>
+      </div>` : ''}
       <div class="empresa-linha">
         <span class="empresa-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.38 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.77a16 16 0 0 0 6.29 6.29l1.62-1.62a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
-        <span>(85) 9.8173-2039</span>
+        <span>${cfg.telefone}</span>
       </div>
       <div class="empresa-linha">
         <span class="empresa-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>
-        <span>(85) 9.8173-2039 &nbsp;&nbsp;</span>
+        <span>${cfg.whatsapp} &nbsp;&nbsp;</span>
         <span class="empresa-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></span>
-        <span>_depositoserradofelix</span>
+        <span>${cfg.instagram}</span>
       </div>
     </div>
   </div>
@@ -619,9 +650,9 @@ async function gerarHTMLComprovante(venda, cliente, produtos = []) {
  * @param {Object} cliente - Dados do cliente
  * @param {Array} produtos - Lista de produtos para resolver nomes de vendas antigas
  */
-export async function gerarComprovanteVenda(venda, cliente = {}, produtos = []) {
+export async function gerarComprovanteVenda(venda, cliente = {}, produtos = [], empresaConfig = null) {
   try {
-    const html = await gerarHTMLComprovante(venda, cliente, produtos);
+    const html = await gerarHTMLComprovante(venda, cliente, produtos, empresaConfig || EMPRESA_CONFIGS.deposito);
 
     // Remove iframe anterior se existir
     const anterior = document.getElementById('__comprovante_iframe__');
@@ -655,8 +686,8 @@ export async function gerarComprovanteVenda(venda, cliente = {}, produtos = []) 
 /**
  * Alias — imprime o comprovante
  */
-export async function imprimirComprovanteVenda(venda, cliente = {}, produtos = []) {
-  return gerarComprovanteVenda(venda, cliente, produtos);
+export async function imprimirComprovanteVenda(venda, cliente = {}, produtos = [], empresaConfig = null) {
+  return gerarComprovanteVenda(venda, cliente, produtos, empresaConfig);
 }
 
 export { formatCurrency };

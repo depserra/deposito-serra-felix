@@ -176,16 +176,35 @@ function extractProdutos(xmlDoc) {
   return produtos;
 }
 
-/**
- * Processa os produtos da NFe para formato de estoque
- * @param {Array} produtosNFe - Produtos extraídos do XML
- * @param {object} notaFiscal - Dados da nota fiscal
- * @returns {Array} - Produtos formatados para importação
- */
+const extrairPesoDoNomeNFe = (nome) => {
+  if (!nome) return 1;
+  const match = nome.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|kilos|kilo|g)\b/i);
+  if (match) {
+    let num = parseFloat(match[1].replace(',', '.'));
+    const unitMatch = match[0].toLowerCase();
+    if (unitMatch.includes('g') && !unitMatch.includes('kg')) {
+      num = num / 1000;
+    }
+    return num;
+  }
+  return 1;
+};
+
 export function processarProdutosNFe(produtosNFe, notaFiscal) {
   return produtosNFe.map((prod, index) => {
-    // Calcular preço de venda (margem padrão de 30% se não especificado)
-    const precoVenda = prod.valorUnitario * 1.30;
+    let quantidade = prod.quantidade;
+    let unidade = prod.unidade;
+    let precoCompra = prod.valorUnitario;
+    let precoVenda = prod.valorUnitario * 1.30; // Margem padrão 30%
+
+    // Se a unidade na nota for diferente de KG, mas o nome do produto diz "10KG", converte tudo para KG.
+    const pesoBase = extrairPesoDoNomeNFe(prod.nome);
+    if (pesoBase !== 1 && !unidade.toLowerCase().includes('kg')) {
+      quantidade = quantidade * pesoBase;
+      unidade = 'kg';
+      precoCompra = precoCompra / pesoBase;
+      precoVenda = precoVenda / pesoBase;
+    }
     
     return {
       nome: prod.nome,
@@ -194,9 +213,9 @@ export function processarProdutosNFe(produtosNFe, notaFiscal) {
       ncm: prod.ncm,
       cfop: prod.cfop,
       categoria: 'Importado NF-e',
-      quantidade: Math.round(prod.quantidade),
-      unidade: prod.unidade,
-      precoCompra: prod.valorUnitario,
+      quantidade: quantidade, // Sem arredondar! Permite valores fracionados em kg
+      unidade: unidade,
+      precoCompra: precoCompra,
       precoVenda: Math.round(precoVenda * 100) / 100,
       estoqueMinimo: 5,
       ativo: true,

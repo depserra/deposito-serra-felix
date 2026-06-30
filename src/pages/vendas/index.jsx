@@ -10,7 +10,8 @@ import Modal from '../../components/modals/Modal';
 import { Plus, Search, Edit, Trash2, FileText, CheckCircle, Clock, XCircle, Filter, Users, Eye, Printer, Download } from 'lucide-react';
 import { VendasSkeleton, LoadingSpinner, EmptyState } from '../../components/ui/LoadingComponents';
 import { formatCurrency } from '../../utils/formatters';
-import { gerarComprovanteVenda, imprimirComprovanteVenda } from '../../utils/gerarComprovanteVenda';
+import { gerarComprovanteVenda, imprimirComprovanteVenda, EMPRESA_CONFIGS } from '../../utils/gerarComprovanteVenda';
+import { useSystem } from '../../contexts/SystemContext';
 
 export default function VendasPage() {
   const location = useLocation();
@@ -28,6 +29,8 @@ export default function VendasPage() {
   const { vendas, loading, error, listarVendas, adicionarVenda, atualizarVenda, deletarVenda } = useVendas();
   const { clientes, listarClientes, invalidarCache } = useClientes();
   const { produtos, listarProdutos } = useEstoque();
+  const { activeSystem } = useSystem();
+  const empresaConfig = activeSystem?.id === 'racao' ? EMPRESA_CONFIGS.racao : EMPRESA_CONFIGS.deposito;
   
   // Debounce para busca
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -102,7 +105,7 @@ export default function VendasPage() {
         valorTotal: Number(data.valorTotal || 0),
         itens: data.itens.map(item => ({
           ...item,
-          quantidade: Math.round(Number(item.quantidade || 0)),
+          quantidade: Number(item.quantidade || 0),
           valorUnitario: Number(item.valorUnitario || 0),
           produtoNome: item.produtoNome || '',
           produtoCodigo: item.produtoCodigo || '',
@@ -198,7 +201,7 @@ export default function VendasPage() {
   const handleImprimirComprovante = useCallback(async () => {
     try {
       const cliente = obterClienteCompleto(vendaDetalhes.clienteId);
-      await imprimirComprovanteVenda(vendaDetalhes, cliente || {}, produtos);
+      await imprimirComprovanteVenda(vendaDetalhes, cliente || {}, produtos, empresaConfig);
     } catch (error) {
       console.error('Erro ao imprimir:', error);
       alert('Erro ao imprimir comprovante: ' + error.message);
@@ -209,7 +212,7 @@ export default function VendasPage() {
   const handleBaixarComprovante = useCallback(async () => {
     try {
       const cliente = obterClienteCompleto(vendaDetalhes.clienteId);
-      await gerarComprovanteVenda(vendaDetalhes, cliente || {}, produtos);
+      await gerarComprovanteVenda(vendaDetalhes, cliente || {}, produtos, empresaConfig);
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       alert('Erro ao gerar comprovante: ' + error.message);
@@ -442,7 +445,7 @@ export default function VendasPage() {
                               onClick={async () => {
                                 try {
                                   const cliente = obterClienteCompleto(venda.clienteId);
-                                  await imprimirComprovanteVenda(venda, cliente || {}, produtos);
+                                  await imprimirComprovanteVenda(venda, cliente || {}, produtos, empresaConfig);
                                 } catch (error) {
                                   alert('Erro ao imprimir: ' + error.message);
                                 }
@@ -504,7 +507,7 @@ export default function VendasPage() {
                           onClick={async () => {
                             try {
                               const cliente = obterClienteCompleto(venda.clienteId);
-                              await imprimirComprovanteVenda(venda, cliente || {}, produtos);
+                              await imprimirComprovanteVenda(venda, cliente || {}, produtos, empresaConfig);
                             } catch (error) {
                               alert('Erro ao imprimir: ' + error.message);
                             }

@@ -1,9 +1,11 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useSystem } from '../contexts/SystemContext';
 import { LoadingSpinner } from './ui/LoadingComponents';
 
-export default function PrivateRoute({ children }) {
+export default function PrivateRoute({ children, requireSystem = true }) {
   const { user, loading } = useAuth();
+  const { activeSystem } = useSystem();
 
   if (loading) {
     return (
@@ -13,5 +15,8 @@ export default function PrivateRoute({ children }) {
     );
   }
 
-  return user ? children : <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (requireSystem && !activeSystem) return <Navigate to="/selecionar-sistema" replace />;
+
+  return children;
 }

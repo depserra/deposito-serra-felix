@@ -5,6 +5,12 @@
  * @returns {Date} Objeto Date com a data no fuso local
  */
 export function stringParaDataLocal(dataString) {
+  if (!dataString) return new Date();
+  if (dataString instanceof Date) return dataString;
+  if (typeof dataString === 'string' && dataString.includes('T')) {
+    const d = new Date(dataString);
+    if (!isNaN(d.getTime())) return d;
+  }
   const [ano, mes, dia] = dataString.split('-').map(Number);
   return new Date(ano, mes - 1, dia);
 }

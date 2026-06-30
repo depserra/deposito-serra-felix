@@ -7,7 +7,7 @@ export const vendaSchema = z.object({
   dataVenda: z.string().min(1, 'Data da venda é obrigatória'),
   itens: z.array(z.object({
     produto: z.string().min(1, 'Produto é obrigatório'),
-    quantidade: z.coerce.number().min(1, 'Quantidade deve ser maior que 0'),
+    quantidade: z.coerce.number().min(0.00001, 'Quantidade deve ser maior que 0'),
     valorUnitario: z.coerce.number().min(0, 'Valor deve ser maior ou igual a 0'),
   })).min(1, 'Adicione pelo menos um item'),
   valorTotal: z.coerce.number().min(0, 'Valor total deve ser maior ou igual a 0').optional(),
