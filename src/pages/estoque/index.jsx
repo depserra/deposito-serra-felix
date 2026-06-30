@@ -5,7 +5,7 @@ import ProdutoForm from '../../components/forms/ProdutoForm';
 import PageLayout from '../../components/layout-new/PageLayout';
 import Modal from '../../components/modals/Modal';
 import { LoadingSpinner, ProdutosSkeleton } from '../../components/ui/LoadingComponents';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatQuantity } from '../../utils/formatters';
 import ImportarNFe from '../../components/ui/ImportarNFe';
 
 export default function Estoque() {
@@ -329,9 +329,7 @@ export default function Estoque() {
                             <span className={`font-semibold ${
                               zerado ? 'text-red-600' : baixoEstoque ? 'text-orange-600' : 'text-slate-900 dark:text-slate-100'
                             }`}>
-                              {typeof produto.quantidade === 'number' && produto.quantidade % 1 !== 0 
-                                ? parseFloat(produto.quantidade.toFixed(3)) 
-                                : (produto.quantidade || 0)} {produto.unidade || 'un'}
+                              {formatQuantity(produto.quantidade)} {produto.unidade || 'un'}
                             </span>
                             {baixoEstoque && !zerado && (
                               <AlertTriangle className="text-orange-500" size={16} />
@@ -421,17 +419,13 @@ export default function Estoque() {
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Quantidade Atual</label>
                     <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {typeof produtoDetalhes.quantidade === 'number' && produtoDetalhes.quantidade % 1 !== 0 
-                        ? parseFloat(produtoDetalhes.quantidade.toFixed(3)) 
-                        : (produtoDetalhes.quantidade || 0)}
+                      {formatQuantity(produtoDetalhes.quantidade)}
                     </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Estoque Mínimo</label>
                     <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                      {typeof produtoDetalhes.estoqueMinimo === 'number' && produtoDetalhes.estoqueMinimo % 1 !== 0 
-                        ? parseFloat(produtoDetalhes.estoqueMinimo.toFixed(3)) 
-                        : (produtoDetalhes.estoqueMinimo || 0)}
+                      {formatQuantity(produtoDetalhes.estoqueMinimo)}
                     </p>
                   </div>
                   <div>

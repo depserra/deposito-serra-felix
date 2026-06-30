@@ -60,3 +60,20 @@ export function formatarData(date) {
     year: 'numeric'
   });
 }
+
+/**
+ * Formata uma quantidade para exibição, limitando a 3 casas decimais se for fracionada
+ * e usando o formato de número brasileiro.
+ * @param {number} value - Quantidade a ser formatada
+ * @returns {string} - Quantidade formatada
+ */
+export function formatQuantity(value) {
+  if (value === null || value === undefined || isNaN(value)) {
+    return '0';
+  }
+  const num = Number(value);
+  return num % 1 !== 0 
+    ? parseFloat(num.toFixed(3)).toLocaleString('pt-BR')
+    : num.toLocaleString('pt-BR');
+}
+

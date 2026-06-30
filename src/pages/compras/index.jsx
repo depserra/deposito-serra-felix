@@ -6,7 +6,7 @@ import CompraForm from '../../components/forms/CompraForm';
 import Modal from '../../components/modals/Modal';
 import { Plus, Search, Edit, Trash2, ShoppingBag, Package, Eye } from 'lucide-react';
 import { LoadingSpinner, EmptyState } from '../../components/ui/LoadingComponents';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatQuantity } from '../../utils/formatters';
 
 export default function ComprasPage() {
   const [showForm, setShowForm] = useState(false);
@@ -409,7 +409,7 @@ export default function ComprasPage() {
                           <td className="py-3 px-4 text-slate-900 dark:text-white">{item.nomeProduto}</td>
                           <td className="py-3 px-4 text-slate-600 dark:text-white">{item.categoria || '-'}</td>
                           <td className="py-3 px-4 text-center text-slate-900 dark:text-white font-medium">{item.unidade || 'un'}</td>
-                          <td className="py-3 px-4 text-right text-slate-900 dark:text-white">{item.quantidade}</td>
+                          <td className="py-3 px-4 text-right text-slate-900 dark:text-white">{formatQuantity(item.quantidade)}</td>
                           <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {formatCurrency(item.valorCompra || item.valorUnitario)}</td>
                           <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {formatCurrency(item.valorVenda)}</td>
                           <td className="py-3 px-4 text-right font-medium text-slate-900 dark:text-white">

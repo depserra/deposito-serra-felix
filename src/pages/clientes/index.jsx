@@ -9,6 +9,7 @@ import Modal from '../../components/modals/Modal';
 import { Plus, Search, Edit, Trash2, History, Users, X, Eye } from 'lucide-react';
 import { ClientesSkeleton, LoadingSpinner, EmptyState } from '../../components/ui/LoadingComponents';
 import { useVendas } from '../../hooks/useVendas';
+import { formatQuantity } from '../../utils/formatters';
 
 export default function ClientesPage() {
   const navigate = useNavigate();
@@ -204,17 +205,18 @@ export default function ClientesPage() {
         </div>
 
         {/* Formulário de cadastro/edição */}
-        {showForm && (
-          <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 mb-8 ${savingLoading ? 'opacity-75 pointer-events-none' : ''}`}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-2 h-8 bg-orange-500 rounded-full"></div>
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                {clienteParaEditar ? 'Editar Cliente' : 'Novo Cliente'}
-                {savingLoading && (
-                  <span className="ml-2 text-sm text-blue-600">Salvando...</span>
-                )}
-              </h2>
-            </div>
+        <Modal
+          isOpen={showForm}
+          onClose={() => {
+            if (!savingLoading) {
+              setShowForm(false);
+              setClienteParaEditar(null);
+            }
+          }}
+          title={clienteParaEditar ? 'Editar Cliente' : 'Novo Cliente'}
+          size="lg"
+        >
+          <div className={savingLoading ? 'opacity-75 pointer-events-none' : ''}>
             {formError && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl">
                 {formError}
@@ -232,7 +234,7 @@ export default function ClientesPage() {
               loading={savingLoading}
             />
           </div>
-        )}
+        </Modal>
 
         {/* Lista de clientes */}
         {loading && carregamentoInicial ? (
@@ -499,8 +501,8 @@ export default function ClientesPage() {
                           {venda.itens && venda.itens.length > 0 ? (
                             venda.itens.map((item, index) => (
                                 <div key={index} className="flex justify-between">
-                                  <span>{getNomeProduto(item.produto)}</span>
-                                  <span>{item.quantidade || 1}x R$ {(item.valorUnitario || 0).toFixed(2)}</span>
+                                  <span>{item.produtoNome || getNomeProduto(item.produto)}</span>
+                                  <span>{formatQuantity(item.quantidade || 1)}x R$ {(item.valorUnitario || 0).toFixed(2)}</span>
                                 </div>
                               ))
                           ) : (

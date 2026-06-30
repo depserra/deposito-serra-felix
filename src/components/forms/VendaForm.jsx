@@ -125,7 +125,7 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
       const initialFracionados = {};
       const itensFormatados = (initialData.itens || []).map((item, index) => {
         const produtoId = item.produto || item.produtoId || item.id || '';
-        const quantidade = item.quantidade ? Number(item.quantidade) : '';
+        const quantidade = item.quantidade ? parseFloat(Number(item.quantidade).toFixed(3)) : '';
         const valorUnitario = item.valorUnitario || item.preco || '';
         
         // Inicializa estado fracionado se for um produto da casa de ração

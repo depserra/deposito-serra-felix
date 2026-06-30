@@ -24,6 +24,14 @@ const formatarMoeda = (valor) => {
   }).format(valor);
 };
 
+const formatarQuantidade = (valor) => {
+  if (valor === null || valor === undefined || isNaN(valor)) return '0';
+  const num = Number(valor);
+  return num % 1 !== 0 
+    ? parseFloat(num.toFixed(3)).toLocaleString('pt-BR')
+    : num.toLocaleString('pt-BR');
+};
+
 export default function RelatoriosPage() {
   const { vendas, listarVendas } = useVendas();
   const { compras, listarCompras } = useCompras();
@@ -325,7 +333,7 @@ export default function RelatoriosPage() {
                       <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                         <td className="py-3 px-4 text-slate-600 dark:text-white">{index + 1}</td>
                         <td className="py-3 px-4 text-slate-900 dark:text-white font-medium">{produto.nome}</td>
-                        <td className="py-3 px-4 text-right text-slate-900 dark:text-white">{produto.quantidade}</td>
+                        <td className="py-3 px-4 text-right text-slate-900 dark:text-white">{formatarQuantidade(produto.quantidade)}</td>
                         <td className="py-3 px-4 text-right text-green-600 dark:text-green-400 font-semibold">
                           R$ {formatarMoeda(produto.valor)}
                         </td>
@@ -420,7 +428,7 @@ export default function RelatoriosPage() {
                       <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
                         <td className="py-3 px-4 text-slate-600 dark:text-white">{index + 1}</td>
                         <td className="py-3 px-4 text-slate-900 dark:text-white font-medium">{produto.nome}</td>
-                        <td className="py-3 px-4 text-right text-slate-900 dark:text-white">{produto.quantidade}</td>
+                        <td className="py-3 px-4 text-right text-slate-900 dark:text-white">{formatarQuantidade(produto.quantidade)}</td>
                         <td className="py-3 px-4 text-right text-red-600 dark:text-red-400 font-semibold">
                           R$ {formatarMoeda(produto.valor)}
                         </td>

@@ -71,7 +71,7 @@ export default function CompraForm({ onSubmit, initialData }) {
         nomeProduto: item.nomeProduto || '',
         categoria: item.categoria || '',
         unidade: item.unidade || 'un',
-        quantidade: item.quantidade?.toString() || '',
+        quantidade: item.quantidade ? parseFloat(Number(item.quantidade).toFixed(3)).toString() : '',
         valorCompra: item.valorCompra?.toString() || item.valorUnitario?.toString() || '',
         valorVenda: item.valorVenda?.toString() || ''
       }));

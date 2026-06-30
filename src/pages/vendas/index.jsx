@@ -9,7 +9,7 @@ import VendaForm from '../../components/forms/VendaForm';
 import Modal from '../../components/modals/Modal';
 import { Plus, Search, Edit, Trash2, FileText, CheckCircle, Clock, XCircle, Filter, Users, Eye, Printer, Download } from 'lucide-react';
 import { VendasSkeleton, LoadingSpinner, EmptyState } from '../../components/ui/LoadingComponents';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatQuantity } from '../../utils/formatters';
 import { gerarComprovanteVenda, imprimirComprovanteVenda, EMPRESA_CONFIGS } from '../../utils/gerarComprovanteVenda';
 import { useSystem } from '../../contexts/SystemContext';
 
@@ -306,34 +306,34 @@ export default function VendasPage() {
         </div>
 
         {/* Formulário de cadastro/edição */}
-        {showForm && (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 mb-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-2 h-8 bg-orange-500 rounded-full"></div>
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                {vendaParaEditar ? 'Editar Venda' : 'Nova Venda'}
-              </h2>
+        <Modal
+          isOpen={showForm}
+          onClose={() => {
+            setShowForm(false);
+            setVendaParaEditar(null);
+          }}
+          title={vendaParaEditar ? 'Editar Venda' : 'Nova Venda'}
+          size="xl"
+        >
+          {formError && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl">
+              {formError}
             </div>
-            {formError && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl">
-                {formError}
-              </div>
-            )}
-            <VendaForm
-              onSubmit={handleSubmit}
-              initialData={vendaParaEditar}
-              clientes={clientes}
-              onReloadVendas={() => listarVendas(searchTerm, statusFiltro)}
-              onClienteAdicionado={async (novoCliente) => {
-                // Invalida o cache e recarrega a lista de clientes para incluir o novo
-                invalidarCache();
-                await listarClientes();
-                // Retorna apenas o ID para o formulário selecionar
-                return novoCliente?.id;
-              }}
-            />
-          </div>
-        )}
+          )}
+          <VendaForm
+            onSubmit={handleSubmit}
+            initialData={vendaParaEditar}
+            clientes={clientes}
+            onReloadVendas={() => listarVendas(searchTerm, statusFiltro)}
+            onClienteAdicionado={async (novoCliente) => {
+              // Invalida o cache e recarrega a lista de clientes para incluir o novo
+              invalidarCache();
+              await listarClientes();
+              // Retorna apenas o ID para o formulário selecionar
+              return novoCliente?.id;
+            }}
+          />
+        </Modal>
 
         {/* Lista de vendas */}
         {/* Lista de vendas */}
@@ -612,8 +612,12 @@ export default function VendasPage() {
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                       {vendaDetalhes.itens?.map((item, index) => (
                         <tr key={index}>
-                          <td className="py-3 px-4 text-slate-900 dark:text-white">{getNomeProduto(item.produto)}</td>
-                          <td className="py-3 px-4 text-right text-slate-900 dark:text-white">{item.quantidade}</td>
+                          <td className="py-3 px-4 text-slate-900 dark:text-white">
+                            {item.produtoNome || getNomeProduto(item.produto)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-slate-900 dark:text-white">
+                            {formatQuantity(item.quantidade)}
+                          </td>
                           <td className="py-3 px-4 text-right text-slate-900 dark:text-white">R$ {formatCurrency(item.valorUnitario)}</td>
                           <td className="py-3 px-4 text-right font-medium text-slate-900 dark:text-white">
                             R$ {formatCurrency(item.quantidade * item.valorUnitario)}

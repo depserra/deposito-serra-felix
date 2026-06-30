@@ -13,7 +13,7 @@ import {
   ShadingType
 } from 'docx';
 import { EMPRESA } from '../constants/index';
-import { formatCurrency, formatarData } from './formatters';
+import { formatCurrency, formatarData, formatQuantity } from './formatters';
 
 /**
  * Gera uma nota de venda em Word
@@ -249,12 +249,12 @@ function criarTabelaItens(venda) {
     return new TableRow({
       children: [
         new TableCell({
-          children: [new Paragraph({ children: [new TextRun({ text: item.produto || 'Produto', size: 18 })] })],
+          children: [new Paragraph({ children: [new TextRun({ text: item.produtoNome || item.produto || 'Produto', size: 18 })] })],
           margins: { top: 80, bottom: 80, left: 80, right: 80 },
           shading: { fill: bg, type: ShadingType.CLEAR }
         }),
         new TableCell({
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(item.quantidade || '0'), size: 18 })] })],
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: formatQuantity(item.quantidade || 0), size: 18 })] })],
           margins: { top: 80, bottom: 80, left: 80, right: 80 },
           shading: { fill: bg, type: ShadingType.CLEAR },
           width: { size: 15, type: WidthType.PERCENTAGE }

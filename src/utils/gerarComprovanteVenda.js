@@ -1,4 +1,4 @@
-import { formatCurrency } from './formatters.js';
+import { formatCurrency, formatQuantity } from './formatters.js';
 
 // Configurações padrão por sistema
 export const EMPRESA_CONFIGS = {
@@ -97,7 +97,7 @@ async function gerarHTMLComprovante(venda, cliente, produtos = [], empresaConfig
           <td style="padding:5px 6px;font-size:9pt;">${codigoProduto}</td>
           <td style="padding:5px 6px;font-size:9pt;">${nomeProduto.toUpperCase()}</td>
           <td style="padding:5px 6px;font-size:9pt;text-align:center;">${unidade.toUpperCase()}</td>
-          <td style="padding:5px 6px;font-size:9pt;text-align:right;">${item.quantidade || 0}</td>
+          <td style="padding:5px 6px;font-size:9pt;text-align:right;">${formatQuantity(item.quantidade || 0)}</td>
           <td style="padding:5px 6px;font-size:9pt;text-align:right;">R$ ${formatCurrency(item.valorUnitario || 0)}</td>
           <td style="padding:5px 6px;font-size:9pt;text-align:right;">R$ ${formatCurrency(subtotal)}</td>
         </tr>`;
