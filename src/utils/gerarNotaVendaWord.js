@@ -244,23 +244,34 @@ function criarTabelaItens(venda) {
   });
 
   const linhasItens = (venda.itens && Array.isArray(venda.itens) ? venda.itens : []).map((item, index) => {
-    const subtotal = (parseFloat(item.quantidade) || 0) * (parseFloat(item.valorUnitario) || 0);
+    let quantidade = parseFloat(item.quantidade) || 0;
+    let valorUnitario = parseFloat(item.valorUnitario) || 0;
+    let unidade = item.unidade || 'un';
+
+    if (item.vendaFracionada) {
+      const fator = Number(item.fatorConversao) || 1;
+      unidade = item.unidadeVenda || 'un';
+      quantidade = quantidade * fator;
+      valorUnitario = Number(item.precoVendaUnitario) || (valorUnitario / fator);
+    }
+
+    const subtotal = quantidade * valorUnitario;
     const bg = index % 2 === 0 ? 'FFFFFF' : 'F9FAFB';
     return new TableRow({
       children: [
         new TableCell({
-          children: [new Paragraph({ children: [new TextRun({ text: item.produtoNome || item.produto || 'Produto', size: 18 })] })],
+          children: [new Paragraph({ children: [new TextRun({ text: `${item.produtoNome || item.produto || 'Produto'} (${unidade.toUpperCase()})`, size: 18 })] })],
           margins: { top: 80, bottom: 80, left: 80, right: 80 },
           shading: { fill: bg, type: ShadingType.CLEAR }
         }),
         new TableCell({
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: formatQuantity(item.quantidade || 0), size: 18 })] })],
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: formatQuantity(quantidade), size: 18 })] })],
           margins: { top: 80, bottom: 80, left: 80, right: 80 },
           shading: { fill: bg, type: ShadingType.CLEAR },
           width: { size: 15, type: WidthType.PERCENTAGE }
         }),
         new TableCell({
-          children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: formatCurrency(item.valorUnitario || 0), size: 18 })] })],
+          children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: formatCurrency(valorUnitario), size: 18 })] })],
           margins: { top: 80, bottom: 80, left: 80, right: 80 },
           shading: { fill: bg, type: ShadingType.CLEAR },
           width: { size: 20, type: WidthType.PERCENTAGE }

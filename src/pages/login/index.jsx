@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, Eye, EyeOff, AlertCircle } from 'lucide-react';
@@ -7,11 +7,25 @@ import Logo from '../../components/ui/Logo';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  // Carregar e-mail e senha salvos ao iniciar
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('@deposito-serra-felix:remember_email');
+    const savedPassword = localStorage.getItem('@deposito-serra-felix:remember_password');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+    if (savedPassword) {
+      setPassword(savedPassword);
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,6 +34,16 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
+      
+      // Salvar ou remover e-mail e senha com base na preferência do usuário
+      if (rememberMe) {
+        localStorage.setItem('@deposito-serra-felix:remember_email', email);
+        localStorage.setItem('@deposito-serra-felix:remember_password', password);
+      } else {
+        localStorage.removeItem('@deposito-serra-felix:remember_email');
+        localStorage.removeItem('@deposito-serra-felix:remember_password');
+      }
+
       navigate('/selecionar-sistema');
     } catch (error) {
       console.error('Erro ao fazer login:', error);
@@ -112,6 +136,24 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+            </div>
+
+            {/* Mantenha conectado */}
+            <div className="flex items-center gap-2">
+              <input
+                id="rememberMe"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded text-orange-500 focus:ring-orange-500 border-slate-300 dark:bg-slate-700 dark:border-slate-600 cursor-pointer"
+                disabled={loading}
+              />
+              <label
+                htmlFor="rememberMe"
+                className="text-sm font-medium text-slate-600 dark:text-slate-400 cursor-pointer select-none"
+              >
+                Mantenha conectado
+              </label>
             </div>
 
             {/* Botão de Login */}

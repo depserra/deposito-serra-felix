@@ -9,9 +9,9 @@ export const EMPRESA_CONFIGS = {
     telefone: '(85) 9.8173-2039',
     whatsapp: '(85) 9.8173-2039',
     instagram: '_depositoserradofelix',
-    endereco: 'Rua das Pedras, 456 - Centro',
-    cidade: 'Chorozinho - CE',
-    cep: '62.875-000',
+    endereco: 'Av. Ester Fernandes, s/n',
+    cidade: 'Serra do Félix, Beberibe-CE',
+    cep: '',
     cnpj: '12.345.678/0001-90',
     ie: '123456789',
   },
@@ -22,8 +22,8 @@ export const EMPRESA_CONFIGS = {
     telefone: '(85) 9.8238-2670',
     whatsapp: '(85) 9.8238-2670',
     instagram: '@agro.serradofelix',
-    endereco: '',
-    cidade: '',
+    endereco: 'Av. Ester Fernandes, s/n',
+    cidade: 'Serra do Félix, Beberibe-CE',
     cep: '',
     cnpj: '',
     ie: '',
@@ -91,14 +91,25 @@ async function gerarHTMLComprovante(venda, cliente, produtos = [], empresaConfig
       const produtoInfo = produtos.find(p => p.id === item.produto);
       const nomeProduto = item.produtoNome || produtoInfo?.nome || item.produto || 'Produto';
       const codigoProduto = item.produtoCodigo || produtoInfo?.codigo || produtoInfo?.codigoProduto || String(idx + 1).padStart(5, '0');
-      const unidade = item.unidade || produtoInfo?.unidade || 'UN';
+      let unidade = item.unidade || produtoInfo?.unidade || 'UN';
+      let quantidade = item.quantidade || 0;
+      let valorUnitario = item.valorUnitario || 0;
+
+      // Se for venda fracionada/unitária, converter valores exibidos no PDF para a unidade individual
+      if (item.vendaFracionada || produtoInfo?.vendaFracionada) {
+        const fator = Number(item.fatorConversao || produtoInfo?.fatorConversao) || 1;
+        unidade = item.unidadeVenda || produtoInfo?.unidadeVenda || 'un';
+        quantidade = (item.quantidade || 0) * fator;
+        valorUnitario = Number(item.precoVendaUnitario || produtoInfo?.precoVendaUnitario) || (valorUnitario / fator);
+      }
+
       return `
         <tr style="background:${bg};border-bottom:1px solid #e8e8e8;">
           <td style="padding:5px 6px;font-size:9pt;">${codigoProduto}</td>
           <td style="padding:5px 6px;font-size:9pt;">${nomeProduto.toUpperCase()}</td>
           <td style="padding:5px 6px;font-size:9pt;text-align:center;">${unidade.toUpperCase()}</td>
-          <td style="padding:5px 6px;font-size:9pt;text-align:right;">${formatQuantity(item.quantidade || 0)}</td>
-          <td style="padding:5px 6px;font-size:9pt;text-align:right;">R$ ${formatCurrency(item.valorUnitario || 0)}</td>
+          <td style="padding:5px 6px;font-size:9pt;text-align:right;">${formatQuantity(quantidade)}</td>
+          <td style="padding:5px 6px;font-size:9pt;text-align:right;">R$ ${formatCurrency(valorUnitario)}</td>
           <td style="padding:5px 6px;font-size:9pt;text-align:right;">R$ ${formatCurrency(subtotal)}</td>
         </tr>`;
     }).join('');

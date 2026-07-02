@@ -37,7 +37,11 @@ const produtoSchema = z.object({
   precoCompra: z.coerce.number().min(0, 'Preço de compra deve ser maior ou igual a 0'),
   precoVenda: z.coerce.number().min(0, 'Preço de venda deve ser maior ou igual a 0'),
   fornecedor: z.string().optional(),
-  localizacao: z.string().optional()
+  localizacao: z.string().optional(),
+  vendaFracionada: z.boolean().optional(),
+  fatorConversao: z.preprocess(val => val === '' ? 1 : val, z.coerce.number().min(1).optional()),
+  unidadeVenda: z.string().optional(),
+  precoVendaUnitario: z.preprocess(val => val === '' ? 0 : val, z.coerce.number().min(0).optional())
 });
 
 export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
@@ -62,7 +66,11 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
       precoCompra: initialData.precoCompra || '',
       precoVenda: initialData.precoVenda || '',
       fornecedor: initialData.fornecedor || '',
-      localizacao: initialData.localizacao || ''
+      localizacao: initialData.localizacao || '',
+      vendaFracionada: initialData.vendaFracionada || false,
+      fatorConversao: initialData.fatorConversao || 1,
+      unidadeVenda: initialData.unidadeVenda || 'un',
+      precoVendaUnitario: initialData.precoVendaUnitario || ''
     };
   }, [initialData]);
 
@@ -85,10 +93,15 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
       precoCompra: '',
       precoVenda: '',
       fornecedor: '',
-      localizacao: ''
+      localizacao: '',
+      vendaFracionada: false,
+      fatorConversao: 1,
+      unidadeVenda: 'un',
+      precoVendaUnitario: ''
     }
   });
 
+  const watchVendaFracionada = watch('vendaFracionada');
 
   const onSubmitForm = async (data) => {
     try {
@@ -97,7 +110,11 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
         quantidade: Number(data.quantidade) || 0,
         estoqueMinimo: Number(data.estoqueMinimo) || 0,
         precoCompra: Number(data.precoCompra) || 0,
-        precoVenda: Number(data.precoVenda) || 0
+        precoVenda: Number(data.precoVenda) || 0,
+        vendaFracionada: !!data.vendaFracionada,
+        fatorConversao: data.vendaFracionada ? (Number(data.fatorConversao) || 1) : 1,
+        unidadeVenda: data.vendaFracionada ? (data.unidadeVenda || 'un') : (data.unidade || 'un'),
+        precoVendaUnitario: data.vendaFracionada ? (Number(data.precoVendaUnitario) || 0) : 0
       };
       await onSubmit(dadosProcessados);
     } catch (error) {
@@ -275,6 +292,86 @@ export default function ProdutoForm({ onSubmit, initialData, onCancel }) {
             <p className="mt-1 text-sm text-red-500">{errors.precoVenda.message}</p>
           )}
         </div>
+      </div>
+
+      {/* Venda Fracionada */}
+      <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <input
+            id="vendaFracionada"
+            type="checkbox"
+            {...register('vendaFracionada')}
+            className="w-4 h-4 rounded text-orange-500 focus:ring-orange-500 border-slate-300 dark:bg-slate-700 dark:border-slate-600 cursor-pointer"
+          />
+          <label
+            htmlFor="vendaFracionada"
+            className="text-sm font-semibold text-slate-700 dark:text-slate-300 cursor-pointer select-none"
+          >
+            Vender este produto de forma fracionada ou unitária (Ex: Caixa fechada vendida por unidade)
+          </label>
+        </div>
+
+        {watchVendaFracionada && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2 border-t border-slate-200 dark:border-slate-800">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Fator de Conversão *
+              </label>
+              <input
+                type="number"
+                {...register('fatorConversao')}
+                onWheel={(e) => e.target.blur()}
+                placeholder="Ex: 100"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Quantidade de itens por embalagem</p>
+              {errors.fatorConversao && (
+                <p className="mt-1 text-sm text-red-500">{errors.fatorConversao.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Unidade de Venda *
+              </label>
+              <select
+                {...register('unidadeVenda')}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="un">Unidade (un)</option>
+                <option value="kg">Quilograma (kg)</option>
+                <option value="g">Grama (g)</option>
+                <option value="m">Metro (m)</option>
+                <option value="l">Litro (l)</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Unidade ao vender fracionado</p>
+              {errors.unidadeVenda && (
+                <p className="mt-1 text-sm text-red-500">{errors.unidadeVenda.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Preço de Venda Unitário
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-white">R$</span>
+                <input
+                  type="number"
+                  step="any"
+                  {...register('precoVendaUnitario')}
+                  onWheel={(e) => e.target.blur()}
+                  placeholder="Calculado se vazio"
+                  className="w-full pl-10 pr-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Deixe em branco para calcular automaticamente</p>
+              {errors.precoVendaUnitario && (
+                <p className="mt-1 text-sm text-red-500">{errors.precoVendaUnitario.message}</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Outras Informações */}

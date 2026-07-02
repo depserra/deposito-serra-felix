@@ -128,18 +128,28 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
         const quantidade = item.quantidade ? parseFloat(Number(item.quantidade).toFixed(3)) : '';
         const valorUnitario = item.valorUnitario || item.preco || '';
         
-        // Inicializa estado fracionado se for um produto da casa de ração
-        if (produtoId && isRacao) {
+        // Inicializa estado fracionado se for vendaFracionada ou produto da casa de ração
+        if (produtoId) {
           const produto = produtos.find(p => p.id === produtoId);
           if (produto && quantidade !== '') {
-            const pesoBase = extrairPesoDoNome(produto.nome);
-            const isVendidoEmKg = produto.unidade?.toLowerCase() === 'kg' || produto.unidade?.toLowerCase() === 'g';
-            const pesoCalculado = isVendidoEmKg ? quantidade : quantidade * pesoBase;
-            const valorTotalItem = (parseFloat(valorUnitario) || produto.precoVenda || 0) * quantidade;
-            initialFracionados[index] = {
-              peso: pesoCalculado > 0 ? pesoCalculado.toFixed(3) : '',
-              valor: valorTotalItem > 0 ? valorTotalItem.toFixed(2) : ''
-            };
+            if (produto.vendaFracionada) {
+              const fator = Number(produto.fatorConversao) || 1;
+              const pesoCalculado = quantidade * fator; // quantidade individual
+              const valorTotalItem = (parseFloat(valorUnitario) || produto.precoVenda || 0) * quantidade;
+              initialFracionados[index] = {
+                peso: pesoCalculado > 0 ? pesoCalculado.toFixed(3) : '',
+                valor: valorTotalItem > 0 ? valorTotalItem.toFixed(2) : ''
+              };
+            } else if (isRacao) {
+              const pesoBase = extrairPesoDoNome(produto.nome);
+              const isVendidoEmKg = produto.unidade?.toLowerCase() === 'kg' || produto.unidade?.toLowerCase() === 'g';
+              const pesoCalculado = isVendidoEmKg ? quantidade : quantidade * pesoBase;
+              const valorTotalItem = (parseFloat(valorUnitario) || produto.precoVenda || 0) * quantidade;
+              initialFracionados[index] = {
+                peso: pesoCalculado > 0 ? pesoCalculado.toFixed(3) : '',
+                valor: valorTotalItem > 0 ? valorTotalItem.toFixed(2) : ''
+              };
+            }
           }
         }
         
@@ -242,6 +252,28 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
     const produto = produtos.find(p => p.id === produtoId);
     if (!produto) return;
     
+    if (produto.vendaFracionada) {
+      const fator = Number(produto.fatorConversao) || 1;
+      const precoUnitario = Number(produto.precoVendaUnitario) || (Number(produto.precoVenda) / fator);
+      
+      const valorCalculado = peso * precoUnitario;
+      const quantidadeParaOForm = peso / fator;
+      const valorUnitarioParaOForm = precoUnitario * fator;
+
+      setValoresFracionados(prev => ({
+        ...prev,
+        [index]: {
+          peso: pesoStr,
+          valor: pesoStr === '' ? '' : (valorCalculado > 0 ? valorCalculado.toFixed(2) : '0.00')
+        }
+      }));
+      
+      setValue(`itens.${index}.quantidade`, quantidadeParaOForm);
+      setValue(`itens.${index}.valorUnitario`, valorUnitarioParaOForm);
+      calcularTotal();
+      return;
+    }
+    
     const pesoBase = extrairPesoDoNome(produto.nome);
     const isVendidoEmKg = produto.unidade?.toLowerCase() === 'kg' || produto.unidade?.toLowerCase() === 'g';
     const precoKg = isVendidoEmKg ? (produto.precoVenda || 0) : ((produto.precoVenda || 0) / pesoBase);
@@ -268,6 +300,28 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
     const produtoId = watch(`itens.${index}.produto`);
     const produto = produtos.find(p => p.id === produtoId);
     if (!produto) return;
+
+    if (produto.vendaFracionada) {
+      const fator = Number(produto.fatorConversao) || 1;
+      const precoUnitario = Number(produto.precoVendaUnitario) || (Number(produto.precoVenda) / fator);
+      
+      const pesoCalculado = precoUnitario > 0 ? valor / precoUnitario : 0;
+      const quantidadeParaOForm = pesoCalculado / fator;
+      const valorUnitarioParaOForm = precoUnitario * fator;
+
+      setValoresFracionados(prev => ({
+        ...prev,
+        [index]: {
+          peso: valorStr === '' ? '' : (pesoCalculado > 0 ? pesoCalculado.toFixed(3) : '0.000'),
+          valor: valorStr
+        }
+      }));
+
+      setValue(`itens.${index}.quantidade`, quantidadeParaOForm);
+      setValue(`itens.${index}.valorUnitario`, valorUnitarioParaOForm);
+      calcularTotal();
+      return;
+    }
 
     const pesoBase = extrairPesoDoNome(produto.nome);
     const isVendidoEmKg = produto.unidade?.toLowerCase() === 'kg' || produto.unidade?.toLowerCase() === 'g';
@@ -318,9 +372,12 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
     }
 
     if (quantidadeSolicitada > quantidadeDisponivel) {
+      const msg = produto.vendaFracionada
+        ? `Estoque insuficiente! Disponível: ${quantidadeDisponivel * (produto.fatorConversao || 1)} ${produto.unidadeVenda || 'un'} (${quantidadeDisponivel} ${produto.unidade || 'emb'})`
+        : `Estoque insuficiente! Disponível: ${quantidadeDisponivel} ${produto.unidade || 'un'}`;
       setErrosEstoque(prev => ({
         ...prev,
-        [index]: `Estoque insuficiente! Disponível: ${quantidadeDisponivel} ${produto.unidade || 'un'}`
+        [index]: msg
       }));
       return false;
     }
@@ -470,7 +527,11 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
             valorUnitario: Number(item.valorUnitario) || 0,
             produtoNome: produtoInfo?.nome || '',
             produtoCodigo: produtoInfo?.codigo || produtoInfo?.codigoProduto || '',
-            unidade: produtoInfo?.unidade || 'UN'
+            unidade: produtoInfo?.unidade || 'UN',
+            vendaFracionada: produtoInfo?.vendaFracionada || false,
+            fatorConversao: produtoInfo?.fatorConversao || 1,
+            unidadeVenda: produtoInfo?.unidadeVenda || '',
+            precoVendaUnitario: produtoInfo?.precoVendaUnitario || 0
           };
         })
       };
@@ -671,20 +732,26 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
                     )}
                   </div>
 
-                  {isRacao && produtoSelecionado ? (
+                  {((isRacao && produtoSelecionado) || (produtoSelecionado?.vendaFracionada)) ? (
                     <div className="md:col-span-5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-3">
                       <div className="flex items-center gap-2 mb-3 pb-2 border-b border-green-200 dark:border-green-800">
                         <Scale size={16} className="text-green-600 dark:text-green-400" />
                         <span className="text-xs font-semibold text-green-800 dark:text-green-300">
-                          {extrairPesoDoNome(produtoSelecionado.nome) !== 1 
-                            ? `Produto vendido no peso (1 unidade = ${extrairPesoDoNome(produtoSelecionado.nome)}kg)`
-                            : `Venda unitária rápida`}
+                          {produtoSelecionado.vendaFracionada 
+                            ? `Produto vendido fracionado/unitário (1 ${produtoSelecionado.unidade || 'emb'} = ${produtoSelecionado.fatorConversao || 1} ${produtoSelecionado.unidadeVenda || 'un'})`
+                            : (extrairPesoDoNome(produtoSelecionado.nome) !== 1 
+                              ? `Produto vendido no peso (1 unidade = ${extrairPesoDoNome(produtoSelecionado.nome)}kg)`
+                              : `Venda unitária rápida`)}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Qtd / Peso (kg) *</label>
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                            {produtoSelecionado.vendaFracionada 
+                              ? `Qtd (${produtoSelecionado.unidadeVenda || 'un'}) *` 
+                              : 'Qtd / Peso (kg) *'}
+                          </label>
                           <input
                             type="number" step="0.001" min="0" 
                             value={valoresFracionados[index]?.peso ?? ''} 

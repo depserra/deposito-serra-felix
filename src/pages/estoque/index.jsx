@@ -419,7 +419,12 @@ export default function Estoque() {
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Quantidade Atual</label>
                     <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {formatQuantity(produtoDetalhes.quantidade)}
+                      {formatQuantity(produtoDetalhes.quantidade)} {produtoDetalhes.unidade || 'un'}
+                      {produtoDetalhes.vendaFracionada && (
+                        <span className="block text-xs font-normal text-slate-500 dark:text-slate-400 mt-1">
+                          Equivale a: {formatQuantity(produtoDetalhes.quantidade * (produtoDetalhes.fatorConversao || 1))} {produtoDetalhes.unidadeVenda || 'un'}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div>
@@ -458,6 +463,11 @@ export default function Estoque() {
                     <label className="block text-sm font-medium text-slate-600 dark:text-white mb-1">Preço de Venda</label>
                     <p className="text-xl font-semibold text-green-600 dark:text-green-400">
                       R$ {formatCurrency(produtoDetalhes.precoVenda || 0)}
+                      {produtoDetalhes.vendaFracionada && (
+                        <span className="block text-xs font-normal text-slate-500 dark:text-slate-400 mt-1">
+                          Unitário: R$ {formatCurrency(produtoDetalhes.precoVendaUnitario || (produtoDetalhes.precoVenda / (produtoDetalhes.fatorConversao || 1)))}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div>

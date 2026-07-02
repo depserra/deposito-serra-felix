@@ -55,7 +55,7 @@ export const EMPRESA = {
   CNPJ: '00.000.000/0000-00', // TODO: Substituir pelo CNPJ real
   TELEFONE: '(00) 00000-0000', // TODO: Substituir pelo telefone real
   EMAIL: 'contato@serra-felix.com.br', // TODO: Substituir pelo email real
-  ENDERECO: 'Rua/Avenida, Número - Cidade, UF', // TODO: Substituir pelo endereço real
+  ENDERECO: 'Av. Ester Fernandes, s/n - Serra do Félix, Beberibe-CE', // TODO: Substituir pelo endereço real
   INSCRICAO_ESTADUAL: '00.000.000.000.000', // TODO: Substituir pela inscrição estadual real
   MENSAGEM_RODAPE: 'Obrigado pela preferência!'
 };
