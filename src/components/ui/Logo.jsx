@@ -4,8 +4,9 @@ import { useSystem } from '../../contexts/SystemContext';
 const Logo = ({ className = "", size = "md" }) => {
   const sizes = {
     sm: "h-12 w-auto",
-    md: "h-45 w-auto",
+    md: "h-44 w-auto",
     lg: "h-40 w-auto",
+    large: "h-40 w-auto",
     xl: "h-48 w-auto"
   };
 
@@ -16,9 +17,9 @@ const Logo = ({ className = "", size = "md" }) => {
 
   return (
     <div className={`flex items-center ${className}`}>
-      <img 
-        src={src} 
-        alt={alt} 
+      <img
+        src={src}
+        alt={alt}
         className={sizes[size]}
       />
     </div>

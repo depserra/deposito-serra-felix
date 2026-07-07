@@ -3,12 +3,17 @@
 /**
  * Parser para arquivos XML de Nota Fiscal Eletrônica (NFe)
  * Suporta as versões 3.10 e 4.00 da NFe
+ *
+ * IMPORTANTE: Este módulo realiza APENAS o parse do XML.
+ * A conversão de unidades (ex: saco → kg) NÃO ocorre aqui.
+ * Ela é responsabilidade do hook useImportacaoNFe, que consulta
+ * a coleção 'produto_fornecedor_conversao' antes de gravar no estoque.
  */
 
 /**
  * Parse do XML da NFe e extração dos produtos
  * @param {string} xmlContent - Conteúdo do arquivo XML
- * @returns {object} - Dados da nota e array de produtos
+ * @returns {{ notaFiscal: object, produtos: object[] }}
  */
 export function parseNFeXML(xmlContent) {
   const parser = new DOMParser();
@@ -26,208 +31,169 @@ export function parseNFeXML(xmlContent) {
     }
   }
   
-  // Extrair informações da nota fiscal
   const notaFiscal = extractNotaFiscalInfo(xmlDoc);
+  const produtos   = extractProdutos(xmlDoc);
   
-  // Extrair produtos
-  const produtos = extractProdutos(xmlDoc);
-  
-  return {
-    notaFiscal,
-    produtos
-  };
+  return { notaFiscal, produtos };
 }
 
 /**
  * Extrai informações gerais da nota fiscal
  */
 function extractNotaFiscalInfo(xmlDoc) {
-  const getText = (tag) => {
-    const elements = xmlDoc.getElementsByTagName(tag);
-    return elements.length > 0 ? elements[0].textContent?.trim() : '';
-  };
-  
-  // Tentar diferentes estruturas de XML
-  const ide = xmlDoc.getElementsByTagName('ide')[0] || xmlDoc.getElementsByTagName('infNFe')[0];
-  const emit = xmlDoc.getElementsByTagName('emit')[0];
-  const dest = xmlDoc.getElementsByTagName('dest')[0];
+  const ide   = xmlDoc.getElementsByTagName('ide')[0]  || xmlDoc.getElementsByTagName('infNFe')[0];
+  const emit  = xmlDoc.getElementsByTagName('emit')[0];
+  const dest  = xmlDoc.getElementsByTagName('dest')[0];
   const total = xmlDoc.getElementsByTagName('total')[0];
-  
+
   return {
-    numero: ide ? (ide.getElementsByTagName('nNF')[0]?.textContent || ide.getElementsByTagName('nnf')[0]?.textContent) : '',
-    serie: ide ? (ide.getElementsByTagName('serie')[0]?.textContent) : '',
-    dataEmissao: ide ? (ide.getElementsByTagName('dhEmi')[0]?.textContent || ide.getElementsByTagName('dEmi')[0]?.textContent) : '',
-    modelo: ide ? (ide.getElementsByTagName('mod')[0]?.textContent) : '',
+    numero:      ide ? (ide.getElementsByTagName('nNF')[0]?.textContent   || ide.getElementsByTagName('nnf')[0]?.textContent)   : '',
+    serie:       ide ? (ide.getElementsByTagName('serie')[0]?.textContent) : '',
+    dataEmissao: ide ? (ide.getElementsByTagName('dhEmi')[0]?.textContent  || ide.getElementsByTagName('dEmi')[0]?.textContent)  : '',
+    modelo:      ide ? (ide.getElementsByTagName('mod')[0]?.textContent)   : '',
     fornecedor: emit ? {
       nome: emit.getElementsByTagName('xNome')[0]?.textContent || emit.getElementsByTagName('xnome')[0]?.textContent || '',
-      cnpj: emit.getElementsByTagName('CNPJ')[0]?.textContent || emit.getElementsByTagName('cnpj')[0]?.textContent || '',
-      cpf: emit.getElementsByTagName('CPF')[0]?.textContent || emit.getElementsByTagName('cpf')[0]?.textContent || '',
+      cnpj: emit.getElementsByTagName('CNPJ')[0]?.textContent  || emit.getElementsByTagName('cnpj')[0]?.textContent  || '',
+      cpf:  emit.getElementsByTagName('CPF')[0]?.textContent   || emit.getElementsByTagName('cpf')[0]?.textContent   || '',
     } : {},
     cliente: dest ? {
       nome: dest.getElementsByTagName('xNome')[0]?.textContent || dest.getElementsByTagName('xnome')[0]?.textContent || '',
-      cnpj: dest.getElementsByTagName('CNPJ')[0]?.textContent || dest.getElementsByTagName('cnpj')[0]?.textContent || '',
-      cpf: dest.getElementsByTagName('CPF')[0]?.textContent || dest.getElementsByTagName('cpf')[0]?.textContent || '',
+      cnpj: dest.getElementsByTagName('CNPJ')[0]?.textContent  || dest.getElementsByTagName('cnpj')[0]?.textContent  || '',
+      cpf:  dest.getElementsByTagName('CPF')[0]?.textContent   || dest.getElementsByTagName('cpf')[0]?.textContent   || '',
     } : {},
-    valorTotal: total ? (total.getElementsByTagName('vNF')[0]?.textContent || total.getElementsByTagName('vnf')[0]?.textContent || '0') : '0',
+    valorTotal: total ? (total.getElementsByTagName('vNF')[0]?.textContent  || total.getElementsByTagName('vnf')[0]?.textContent  || '0') : '0',
   };
 }
 
 /**
- * Extrai os produtos da nota fiscal
+ * Extrai os produtos da nota fiscal.
+ *
+ * Para cada item retorna:
+ *  - codigo / nome / ncm / cfop
+ *  - unidadeComercial (uCom) — unidade na qual o fornecedor vendeu
+ *  - quantidadeComercial (qCom) — quantidade comprada nessa unidade
+ *  - valorUnitarioComercial (vUnCom) — preço por unidade comercial
+ *  - unidadeTributavel (uTrib) — unidade tributável (pode ser a unidade base real)
+ *  - quantidadeTributavel (qTrib) — quantidade tributável (muitas vezes já em unidade base)
+ *  - gtin — código EAN/GTIN do produto (quando disponível)
+ *
+ * A decisão de qual par usar para dar entrada no estoque é responsabilidade
+ * do hook useImportacaoNFe (consulta produto_fornecedor_conversao).
  */
 function extractProdutos(xmlDoc) {
-  const produtos = [];
+  const produtos    = [];
   const detElements = xmlDoc.getElementsByTagName('det');
-  
+
   for (let i = 0; i < detElements.length; i++) {
-    const det = detElements[i];
+    const det  = detElements[i];
     const prod = det.getElementsByTagName('prod')[0];
-    
     if (!prod) continue;
-    
-    // Extrair dados do produto
-    const codigo = prod.getElementsByTagName('cProd')[0]?.textContent?.trim() || 
-                   prod.getElementsByTagName('cprod')[0]?.textContent?.trim() || '';
-    
-    const nome = prod.getElementsByTagName('xProd')[0]?.textContent?.trim() || 
-                 prod.getElementsByTagName('xprod')[0]?.textContent?.trim() || '';
-    
-    const ncm = prod.getElementsByTagName('NCM')[0]?.textContent?.trim() || 
-                prod.getElementsByTagName('ncm')[0]?.textContent?.trim() || '';
-    
-    const cfop = prod.getElementsByTagName('CFOP')[0]?.textContent?.trim() || 
-                 prod.getElementsByTagName('cfop')[0]?.textContent?.trim() || '';
-    
-    const unidade = prod.getElementsByTagName('uCom')[0]?.textContent?.trim() || 
-                    prod.getElementsByTagName('ucom')[0]?.textContent?.trim() || 'UN';
-    
-    const quantidade = parseFloat(prod.getElementsByTagName('qCom')[0]?.textContent?.replace(',', '.') || 
-                                  prod.getElementsByTagName('qcom')[0]?.textContent?.replace(',', '.') || '0');
-    
-    const valorUnitario = parseFloat(prod.getElementsByTagName('vUnCom')[0]?.textContent?.replace(',', '.') || 
-                             prod.getElementsByTagName('vuncom')[0]?.textContent?.replace(',', '.') || '0');
-    
-    const valorTotal = parseFloat(prod.getElementsByTagName('vProd')[0]?.textContent?.replace(',', '.') || 
-                          prod.getElementsByTagName('vprod')[0]?.textContent?.replace(',', '.') || '0');
-    
-    // Extrair informações de imposto (ICMS)
+
+    const g = (tag) => prod.getElementsByTagName(tag)[0]?.textContent?.trim() || '';
+
+    const codigo = g('cProd') || g('cprod');
+    const nome   = g('xProd') || g('xprod');
+    if (!nome) continue;
+
+    const ncm  = g('NCM')  || g('ncm');
+    const cfop = g('CFOP') || g('cfop');
+    const gtin = g('cEANTrib') || g('cEAN') || g('cean') || '';
+
+    // Unidade comercial (como o fornecedor faturou)
+    const unidadeComercial    = g('uCom')   || g('ucom')   || 'UN';
+    const quantidadeComercial = parseFloat((g('qCom')   || g('qcom')   || '0').replace(',', '.'));
+    const valorUnitComercial  = parseFloat((g('vUnCom') || g('vuncom') || '0').replace(',', '.'));
+    const valorTotalComercial = parseFloat((g('vProd')  || g('vprod')  || '0').replace(',', '.'));
+
+    // Unidade tributável (frequentemente é a unidade base real — ex: KG para sacos)
+    const unidadeTributavel    = g('uTrib')   || g('utrib')   || '';
+    const quantidadeTributavel = parseFloat((g('qTrib')   || g('qtrib')  || '0').replace(',', '.'));
+    const valorUnitTributavel  = parseFloat((g('vUnTrib') || g('vuntrib')|| '0').replace(',', '.'));
+
+    // ICMS
     const icms = det.getElementsByTagName('ICMS')[0] || det.getElementsByTagName('icms')[0];
-    let cstIcms = '';
-    let aliquotaIcms = 0;
-    
+    let cstIcms = '', aliquotaIcms = 0;
     if (icms) {
-      // Tentar diferentes situações tributárias
       const icms00 = icms.getElementsByTagName('ICMS00')[0];
-      const icms10 = icms.getElementsByTagName('ICMS10')[0];
       const icms20 = icms.getElementsByTagName('ICMS20')[0];
       const icms40 = icms.getElementsByTagName('ICMS40')[0];
       const icms60 = icms.getElementsByTagName('ICMS60')[0];
       const icmsSn = icms.getElementsByTagName('ICMSSN101')[0];
-      
-      if (icms00) {
-        cstIcms = '00';
-        aliquotaIcms = parseFloat(icms00.getElementsByTagName('pICMS')[0]?.textContent?.replace(',', '.') || '0');
-      } else if (icms20) {
-        cstIcms = '20';
-        aliquotaIcms = parseFloat(icms20.getElementsByTagName('pICMS')[0]?.textContent?.replace(',', '.') || '0');
-      } else if (icms40) {
-        cstIcms = '40';
-      } else if (icms60) {
-        cstIcms = '60';
-      } else if (icmsSn) {
-        cstIcms = 'SN';
-        aliquotaIcms = parseFloat(icmsSn.getElementsByTagName('pICMS')[0]?.textContent?.replace(',', '.') || '0');
-      }
+      if      (icms00) { cstIcms = '00'; aliquotaIcms = parseFloat(icms00.getElementsByTagName('pICMS')[0]?.textContent?.replace(',', '.') || '0'); }
+      else if (icms20) { cstIcms = '20'; aliquotaIcms = parseFloat(icms20.getElementsByTagName('pICMS')[0]?.textContent?.replace(',', '.') || '0'); }
+      else if (icms40) { cstIcms = '40'; }
+      else if (icms60) { cstIcms = '60'; }
+      else if (icmsSn) { cstIcms = 'SN'; aliquotaIcms = parseFloat(icmsSn.getElementsByTagName('pICMS')[0]?.textContent?.replace(',', '.') || '0'); }
     }
-    
-    // Extrair IPI
+
+    // IPI
     const imp = det.getElementsByTagName('imposto')[0];
     let aliquotaIpi = 0;
     if (imp) {
       const ipi = imp.getElementsByTagName('IPI')[0] || imp.getElementsByTagName('ipi')[0];
       if (ipi) {
         const ipiTrib = ipi.getElementsByTagName('pIPI')[0]?.textContent?.replace(',', '.');
-        if (ipiTrib) {
-          aliquotaIpi = parseFloat(ipiTrib);
-        }
+        if (ipiTrib) aliquotaIpi = parseFloat(ipiTrib);
       }
     }
-    
-    // Se não encontrou nome do produto, pular
-    if (!nome) continue;
-    
+
     produtos.push({
       codigo,
       nome,
+      gtin,
       ncm,
       cfop,
-      unidade,
-      quantidade,
-      valorUnitario,
-      valorTotal,
+      unidadeComercial,
+      quantidadeComercial,
+      valorUnitComercial,
+      valorTotalComercial,
+      unidadeTributavel,
+      quantidadeTributavel,
+      valorUnitTributavel,
       cstIcms,
       aliquotaIcms,
       aliquotaIpi,
-      // Gerar descrição baseada nas informações disponíveis
       descricao: `${nome} - NCM: ${ncm} - CFOP: ${cfop}`
     });
   }
-  
+
   return produtos;
 }
 
-const extrairPesoDoNomeNFe = (nome) => {
-  if (!nome) return 1;
-  const match = nome.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|kilos|kilo|g)\b/i);
-  if (match) {
-    let num = parseFloat(match[1].replace(',', '.'));
-    const unitMatch = match[0].toLowerCase();
-    if (unitMatch.includes('g') && !unitMatch.includes('kg')) {
-      num = num / 1000;
-    }
-    return num;
-  }
-  return 1;
-};
-
+/**
+ * Prepara os dados brutos do XML para o fluxo de importação.
+ * NÃO realiza conversão de unidades — isso é feito em useImportacaoNFe
+ * após consultar produto_fornecedor_conversao.
+ *
+ * @param {object[]} produtosNFe - array retornado por parseNFeXML
+ * @param {object}   notaFiscal  - cabeçalho retornado por parseNFeXML
+ * @returns {object[]}
+ */
 export function processarProdutosNFe(produtosNFe, notaFiscal) {
-  return produtosNFe.map((prod, index) => {
-    let quantidade = prod.quantidade;
-    let unidade = prod.unidade;
-    let precoCompra = prod.valorUnitario;
-    let precoVenda = prod.valorUnitario * 1.30; // Margem padrão 30%
-
-    // Se a unidade na nota for diferente de KG, mas o nome do produto diz "10KG", converte tudo para KG.
-    const pesoBase = extrairPesoDoNomeNFe(prod.nome);
-    if (pesoBase !== 1 && !unidade.toLowerCase().includes('kg')) {
-      quantidade = quantidade * pesoBase;
-      unidade = 'kg';
-      precoCompra = precoCompra / pesoBase;
-      precoVenda = precoVenda / pesoBase;
+  return produtosNFe.map((prod) => ({
+    codigoFornecedor: prod.codigo,
+    gtin:             prod.gtin,
+    nome:             prod.nome,
+    descricao:        prod.descricao,
+    ncm:              prod.ncm,
+    cfop:             prod.cfop,
+    unidadeComercial:     prod.unidadeComercial,
+    quantidadeComercial:  prod.quantidadeComercial,
+    valorUnitComercial:   prod.valorUnitComercial,
+    valorTotalComercial:  prod.valorTotalComercial,
+    unidadeTributavel:    prod.unidadeTributavel,
+    quantidadeTributavel: prod.quantidadeTributavel,
+    valorUnitTributavel:  prod.valorUnitTributavel,
+    cstIcms:      prod.cstIcms,
+    aliquotaIcms: prod.aliquotaIcms,
+    aliquotaIpi:  prod.aliquotaIpi,
+    importacao: {
+      notaFiscal:     notaFiscal.numero,
+      serie:          notaFiscal.serie,
+      dataEmissao:    notaFiscal.dataEmissao,
+      fornecedor:     notaFiscal.fornecedor?.nome  || '',
+      cnpjFornecedor: notaFiscal.fornecedor?.cnpj  || '',
+      dataImportacao: new Date().toISOString(),
     }
-    
-    return {
-      nome: prod.nome,
-      codigo: prod.codigo || `NFE-${notaFiscal.numero}-${index + 1}`,
-      descricao: prod.descricao,
-      ncm: prod.ncm,
-      cfop: prod.cfop,
-      categoria: 'Importado NF-e',
-      quantidade: quantidade, // Sem arredondar! Permite valores fracionados em kg
-      unidade: unidade,
-      precoCompra: precoCompra,
-      precoVenda: Math.round(precoVenda * 100) / 100,
-      estoqueMinimo: 5,
-      ativo: true,
-      // Dados adicionais da importação
-      importacao: {
-        notaFiscal: notaFiscal.numero,
-        serie: notaFiscal.serie,
-        dataEmissao: notaFiscal.dataEmissao,
-        fornecedor: notaFiscal.fornecedor?.nome,
-        cnpjFornecedor: notaFiscal.fornecedor?.cnpj,
-        dataImportacao: new Date().toISOString()
-      }
-    };
-  });
+  }));
 }

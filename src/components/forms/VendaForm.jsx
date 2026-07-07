@@ -12,19 +12,52 @@ import { useSystem } from '../../contexts/SystemContext';
 import { db } from '../../services/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
-const extrairPesoDoNome = (nome) => {
-  if (!nome) return 1;
-  const match = nome.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|kilos|kilo|g)\b/i);
-  if (match) {
-    let num = parseFloat(match[1].replace(',', '.'));
-    const unitMatch = match[0].toLowerCase();
-    // se for em gramas (ex: 500g), converte para kg
-    if (unitMatch.includes('g') && !unitMatch.includes('kg')) {
-      num = num / 1000;
-    }
-    return num;
+import {
+  calcularVendaPorQuantidade,
+  calcularVendaPorValor,
+  validarIncrementoMinimo,
+  extrairPesoDoNome,
+} from '../../utils/conversaoUnidades';
+
+// Determina se um produto aceita venda fracionada pelo novo ou antigo campo
+const produtoEhFracionavel = (produto) =>
+  !!(produto?.permiteFragmentacao || produto?.vendaFracionada);
+
+// Determina se o produto deve exibir a caixa de fracionamento/peso na venda
+const produtoPrecisaFracionamento = (produto, isRacao) => {
+  if (!produto) return false;
+  if (produtoEhFracionavel(produto)) return true;
+  if (isRacao) {
+    const isKg = produto.unidade?.toLowerCase() === 'kg' || produto.unidade?.toLowerCase() === 'g';
+    const pesoBase = extrairPesoDoNome(produto.nome);
+    return isKg || pesoBase !== 1;
   }
-  return 1;
+  return false;
+};
+
+// Preço por unidade base do produto (compatível com ambos os modelos)
+const precoBaseDosProduto = (produto) => {
+  if (!produto) return 0;
+  if (produto.permiteFragmentacao || produto.vendaFracionada) {
+    // Modelo explícito: precoVendaUnitario OU precoVenda / fatorConversao
+    const fator = Number(produto.fatorConversao) || 1;
+    return Number(produto.precoVendaUnitario) || (Number(produto.precoVenda) / fator);
+  }
+  // Modelo legado ração: extrair do nome
+  const pesoBase = extrairPesoDoNome(produto.nome);
+  const isKg = produto.unidade?.toLowerCase() === 'kg' || produto.unidade?.toLowerCase() === 'g';
+  return isKg ? (produto.precoVenda || 0) : ((produto.precoVenda || 0) / pesoBase);
+};
+
+// Fator de conversão: quantas unidades de venda cabem em 1 unidade de estoque
+const fatorDosProduto = (produto) => {
+  if (!produto) return 1;
+  if (produto.permiteFragmentacao || produto.vendaFracionada) {
+    return Number(produto.fatorConversao) || 1;
+  }
+  const isKg = produto.unidade?.toLowerCase() === 'kg' || produto.unidade?.toLowerCase() === 'g';
+  if (isKg) return 1;
+  return extrairPesoDoNome(produto.nome);
 };
 
 export default function VendaForm({ onSubmit, clientes, initialData, onClienteAdicionado, onReloadVendas }) {
@@ -245,101 +278,82 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
     });
   };
 
-  // Usuário digitou valor em kg → recalcula valor em R$ e ajusta a fração (quantidade)
+  // Usuário digitou quantidade/peso → recalcula valor em R$ e ajusta campos do formulário
   const handleFracionadoPeso = (index, pesoStr) => {
     const peso = parseFloat(pesoStr) || 0;
     const produtoId = watch(`itens.${index}.produto`);
     const produto = produtos.find(p => p.id === produtoId);
     if (!produto) return;
-    
-    if (produto.vendaFracionada) {
-      const fator = Number(produto.fatorConversao) || 1;
-      const precoUnitario = Number(produto.precoVendaUnitario) || (Number(produto.precoVenda) / fator);
-      
-      const valorCalculado = peso * precoUnitario;
-      const quantidadeParaOForm = peso / fator;
-      const valorUnitarioParaOForm = precoUnitario * fator;
 
+    const fator      = fatorDosProduto(produto);
+    const precoBase  = precoBaseDosProduto(produto);
+    const incremento = Number(produto.incrementoMinimoVenda) || 0;
+
+    const uEstoque = (produto.unidade || '').toUpperCase();
+    const uBase = (produto.unidadeVenda || 'un').toUpperCase();
+    const estoqueNaUnidadeBase = (uEstoque === uBase) || ['KG', 'G', 'L', 'ML', 'M'].includes(uEstoque);
+
+    // Validar incremento mínimo
+    if (incremento > 0 && peso > 0 && !validarIncrementoMinimo(peso, incremento)) {
+      // Arredondar para o múltiplo mais próximo (para baixo)
+      const pesoAjustado = Math.floor(peso / incremento) * incremento;
+      const { valorTotal } = calcularVendaPorQuantidade(pesoAjustado, precoBase);
+      const qtdForm = (fator > 1 && !estoqueNaUnidadeBase) ? pesoAjustado / fator : pesoAjustado;
       setValoresFracionados(prev => ({
         ...prev,
         [index]: {
-          peso: pesoStr,
-          valor: pesoStr === '' ? '' : (valorCalculado > 0 ? valorCalculado.toFixed(2) : '0.00')
+          peso: pesoAjustado.toFixed(3),
+          valor: valorTotal.toFixed(2)
         }
       }));
-      
-      setValue(`itens.${index}.quantidade`, quantidadeParaOForm);
-      setValue(`itens.${index}.valorUnitario`, valorUnitarioParaOForm);
+      setValue(`itens.${index}.quantidade`, qtdForm);
+      setValue(`itens.${index}.valorUnitario`, precoBase * (estoqueNaUnidadeBase ? 1 : fator));
       calcularTotal();
       return;
     }
-    
-    const pesoBase = extrairPesoDoNome(produto.nome);
-    const isVendidoEmKg = produto.unidade?.toLowerCase() === 'kg' || produto.unidade?.toLowerCase() === 'g';
-    const precoKg = isVendidoEmKg ? (produto.precoVenda || 0) : ((produto.precoVenda || 0) / pesoBase);
-    
-    const valorCalculado = peso * precoKg;
-    const quantidadeParaOForm = isVendidoEmKg ? peso : (pesoBase > 0 ? peso / pesoBase : 0);
+
+    const { valorTotal } = calcularVendaPorQuantidade(peso, precoBase);
+    // qtdForm: em unidades de estoque (embalagens ou kg, dependendo do fator)
+    const qtdForm = (fator > 1 && !estoqueNaUnidadeBase) ? peso / fator : peso;
 
     setValoresFracionados(prev => ({
       ...prev,
       [index]: {
         peso: pesoStr,
-        valor: pesoStr === '' ? '' : (valorCalculado > 0 ? valorCalculado.toFixed(2) : '0.00')
+        valor: pesoStr === '' ? '' : valorTotal.toFixed(2)
       }
     }));
-    
-    setValue(`itens.${index}.quantidade`, quantidadeParaOForm);
-    setValue(`itens.${index}.valorUnitario`, produto.precoVenda);
+    setValue(`itens.${index}.quantidade`, qtdForm);
+    setValue(`itens.${index}.valorUnitario`, precoBase * (estoqueNaUnidadeBase ? 1 : fator));
     calcularTotal();
   };
 
-  // Usuário digitou valor em R$ → recalcula peso em kg e ajusta a fração (quantidade)
+  // Usuário digitou valor em R$ → recalcula quantidade e ajusta campos do formulário
   const handleFracionadoValor = (index, valorStr) => {
     const valor = parseFloat(valorStr) || 0;
     const produtoId = watch(`itens.${index}.produto`);
     const produto = produtos.find(p => p.id === produtoId);
     if (!produto) return;
 
-    if (produto.vendaFracionada) {
-      const fator = Number(produto.fatorConversao) || 1;
-      const precoUnitario = Number(produto.precoVendaUnitario) || (Number(produto.precoVenda) / fator);
-      
-      const pesoCalculado = precoUnitario > 0 ? valor / precoUnitario : 0;
-      const quantidadeParaOForm = pesoCalculado / fator;
-      const valorUnitarioParaOForm = precoUnitario * fator;
+    const fator      = fatorDosProduto(produto);
+    const precoBase  = precoBaseDosProduto(produto);
+    const incremento = Number(produto.incrementoMinimoVenda) || 0;
 
-      setValoresFracionados(prev => ({
-        ...prev,
-        [index]: {
-          peso: valorStr === '' ? '' : (pesoCalculado > 0 ? pesoCalculado.toFixed(3) : '0.000'),
-          valor: valorStr
-        }
-      }));
-
-      setValue(`itens.${index}.quantidade`, quantidadeParaOForm);
-      setValue(`itens.${index}.valorUnitario`, valorUnitarioParaOForm);
-      calcularTotal();
-      return;
-    }
-
-    const pesoBase = extrairPesoDoNome(produto.nome);
-    const isVendidoEmKg = produto.unidade?.toLowerCase() === 'kg' || produto.unidade?.toLowerCase() === 'g';
-    const precoKg = isVendidoEmKg ? (produto.precoVenda || 0) : ((produto.precoVenda || 0) / pesoBase);
-    
-    const pesoCalculado = precoKg > 0 ? valor / precoKg : 0;
-    const quantidadeParaOForm = isVendidoEmKg ? pesoCalculado : (pesoBase > 0 ? pesoCalculado / pesoBase : 0);
+    const { quantidade, valorTotal } = calcularVendaPorValor(valor, precoBase, incremento);
+    const uEstoque = (produto.unidade || '').toUpperCase();
+    const uBase = (produto.unidadeVenda || 'un').toUpperCase();
+    const estoqueNaUnidadeBase = (uEstoque === uBase) || ['KG', 'G', 'L', 'ML', 'M'].includes(uEstoque);
+    const qtdForm = (fator > 1 && !estoqueNaUnidadeBase) ? quantidade / fator : quantidade;
 
     setValoresFracionados(prev => ({
       ...prev,
       [index]: {
-        peso: valorStr === '' ? '' : (pesoCalculado > 0 ? pesoCalculado.toFixed(3) : '0.000'),
+        peso: valorStr === '' ? '' : quantidade.toFixed(3),
         valor: valorStr
       }
     }));
-
-    setValue(`itens.${index}.quantidade`, quantidadeParaOForm);
-    setValue(`itens.${index}.valorUnitario`, produto.precoVenda);
+    setValue(`itens.${index}.quantidade`, qtdForm);
+    setValue(`itens.${index}.valorUnitario`, precoBase * (estoqueNaUnidadeBase ? 1 : fator));
     calcularTotal();
   };
 
@@ -372,7 +386,11 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
     }
 
     if (quantidadeSolicitada > quantidadeDisponivel) {
-      const msg = produto.vendaFracionada
+      const uEstoque = (produto.unidade || '').toUpperCase();
+      const uBase = (produto.unidadeVenda || 'un').toUpperCase();
+      const estoqueNaUnidadeBase = (uEstoque === uBase) || ['KG', 'G', 'L', 'ML', 'M'].includes(uEstoque);
+
+      const msg = (produto.vendaFracionada && !estoqueNaUnidadeBase)
         ? `Estoque insuficiente! Disponível: ${quantidadeDisponivel * (produto.fatorConversao || 1)} ${produto.unidadeVenda || 'un'} (${quantidadeDisponivel} ${produto.unidade || 'emb'})`
         : `Estoque insuficiente! Disponível: ${quantidadeDisponivel} ${produto.unidade || 'un'}`;
       setErrosEstoque(prev => ({
@@ -732,25 +750,35 @@ export default function VendaForm({ onSubmit, clientes, initialData, onClienteAd
                     )}
                   </div>
 
-                  {((isRacao && produtoSelecionado) || (produtoSelecionado?.vendaFracionada)) ? (
+                  {produtoPrecisaFracionamento(produtoSelecionado, isRacao) ? (
                     <div className="md:col-span-5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-3">
                       <div className="flex items-center gap-2 mb-3 pb-2 border-b border-green-200 dark:border-green-800">
                         <Scale size={16} className="text-green-600 dark:text-green-400" />
                         <span className="text-xs font-semibold text-green-800 dark:text-green-300">
-                          {produtoSelecionado.vendaFracionada 
-                            ? `Produto vendido fracionado/unitário (1 ${produtoSelecionado.unidade || 'emb'} = ${produtoSelecionado.fatorConversao || 1} ${produtoSelecionado.unidadeVenda || 'un'})`
-                            : (extrairPesoDoNome(produtoSelecionado.nome) !== 1 
-                              ? `Produto vendido no peso (1 unidade = ${extrairPesoDoNome(produtoSelecionado.nome)}kg)`
-                              : `Venda unitária rápida`)}
+                          {(() => {
+                            const labelUnidade = (produtoSelecionado.unidade?.toLowerCase() === 'kg' || produtoSelecionado.unidade?.toLowerCase() === 'g')
+                              ? 'un'
+                              : (produtoSelecionado.unidade || 'un');
+
+                            if (produtoSelecionado.permiteFragmentacao || produtoSelecionado.vendaFracionada) {
+                              const fator = produtoSelecionado.fatorConversao || 1;
+                              const unidVenda = produtoSelecionado.unidadeVenda || 'un';
+                              return `Produto fracionável — 1 ${labelUnidade} = ${fator} ${unidVenda}`;
+                            }
+                            // Fallback legado de ração (baseado na regex do nome)
+                            const peso = extrairPesoDoNome(produtoSelecionado.nome);
+                            if (peso !== 1) {
+                              return `Produto vendido no peso (1 ${labelUnidade} = ${peso}kg)`;
+                            }
+                            return `Venda unitária rápida`;
+                          })()}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                            {produtoSelecionado.vendaFracionada 
-                              ? `Qtd (${produtoSelecionado.unidadeVenda || 'un'}) *` 
-                              : 'Qtd / Peso (kg) *'}
+                            {`Qtd / Peso (${produtoSelecionado?.unidadeVenda || produtoSelecionado?.unidade || 'un'}) *`}
                           </label>
                           <input
                             type="number" step="0.001" min="0" 

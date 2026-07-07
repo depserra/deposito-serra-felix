@@ -43,6 +43,8 @@ export default function FinanceiroPage() {
   const calcularPeriodo = () => {
     const hoje = new Date();
     let inicio = new Date();
+    const fim = new Date(hoje);
+    fim.setHours(23, 59, 59, 999);
     
     switch(periodo) {
       case 'hoje':
@@ -62,12 +64,14 @@ export default function FinanceiroPage() {
         inicio = new Date(2000, 0, 1);
         break;
       case 'personalizado':
-        return { inicio: dataInicio ? new Date(dataInicio) : inicio, fim: dataFim ? new Date(dataFim) : hoje };
+        const personalizadoFim = dataFim ? new Date(dataFim) : hoje;
+        personalizadoFim.setHours(23, 59, 59, 999);
+        return { inicio: dataInicio ? new Date(dataInicio) : inicio, fim: personalizadoFim };
       default:
         inicio.setMonth(hoje.getMonth() - 1);
     }
     
-    return { inicio, fim: hoje };
+    return { inicio, fim };
   };
 
   // Filtrar dados por período
@@ -126,6 +130,47 @@ export default function FinanceiroPage() {
       quantidadeCompras: dadosFiltrados.compras.length
     };
   }, [dadosFiltrados]);
+
+  // Ordenar recentes por data de criação (criadoEm) ou data do evento (dataCompra/dataVenda)
+  const comprasRecentes = useMemo(() => {
+    return [...dadosFiltrados.compras].sort((a, b) => {
+      const obterTimestamp = (item, campoFallback) => {
+        if (!item) return 0;
+        if (item.criadoEm) {
+          if (item.criadoEm instanceof Date) return item.criadoEm.getTime();
+          if (typeof item.criadoEm.toDate === 'function') return item.criadoEm.toDate().getTime();
+          const parsed = new Date(item.criadoEm);
+          if (!isNaN(parsed.getTime())) return parsed.getTime();
+        }
+        const fallback = item[campoFallback];
+        if (fallback instanceof Date) return fallback.getTime();
+        if (fallback && typeof fallback.toDate === 'function') return fallback.toDate().getTime();
+        const parsedFallback = new Date(fallback);
+        return !isNaN(parsedFallback.getTime()) ? parsedFallback.getTime() : 0;
+      };
+      return obterTimestamp(b, 'dataCompra') - obterTimestamp(a, 'dataCompra');
+    });
+  }, [dadosFiltrados.compras]);
+
+  const vendasRecentes = useMemo(() => {
+    return [...dadosFiltrados.vendas].sort((a, b) => {
+      const obterTimestamp = (item, campoFallback) => {
+        if (!item) return 0;
+        if (item.criadoEm) {
+          if (item.criadoEm instanceof Date) return item.criadoEm.getTime();
+          if (typeof item.criadoEm.toDate === 'function') return item.criadoEm.toDate().getTime();
+          const parsed = new Date(item.criadoEm);
+          if (!isNaN(parsed.getTime())) return parsed.getTime();
+        }
+        const fallback = item[campoFallback];
+        if (fallback instanceof Date) return fallback.getTime();
+        if (fallback && typeof fallback.toDate === 'function') return fallback.toDate().getTime();
+        const parsedFallback = new Date(fallback);
+        return !isNaN(parsedFallback.getTime()) ? parsedFallback.getTime() : 0;
+      };
+      return obterTimestamp(b, 'dataVenda') - obterTimestamp(a, 'dataVenda');
+    });
+  }, [dadosFiltrados.vendas]);
 
   const loading = loadingVendas || loadingCompras || loadingFinanceiro;
 
@@ -267,7 +312,7 @@ export default function FinanceiroPage() {
                   </h3>
                 </div>
                 <div className="space-y-3">
-                  {dadosFiltrados.vendas.slice(0, 5).map((venda) => {
+                  {vendasRecentes.slice(0, 5).map((venda) => {
                     const isFiado = venda.status === 'em_andamento';
                     return (
                       <div 
@@ -318,7 +363,7 @@ export default function FinanceiroPage() {
                   </h3>
                 </div>
                 <div className="space-y-3">
-                  {dadosFiltrados.compras.slice(0, 5).map((compra) => (
+                  {comprasRecentes.slice(0, 5).map((compra) => (
                     <div key={compra.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
                       <div>
                         <p className="font-medium text-slate-900 dark:text-slate-100">

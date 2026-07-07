@@ -1,5 +1,10 @@
 // Registra o Service Worker para funcionalidade offline
 export function registerServiceWorker() {
+  // Desativa o Service Worker em ambiente de desenvolvimento local para evitar cache indesejado
+  if (import.meta.env.DEV) {
+    return;
+  }
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker

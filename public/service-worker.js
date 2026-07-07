@@ -8,7 +8,8 @@ const PRECACHE_URLS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/logo-serra-felix.png'
+  '/logo-serra-felix.png',
+  '/logo-casa-racao.png'
 ];
 
 // Instala o service worker e faz cache dos arquivos essenciais

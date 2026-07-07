@@ -8,6 +8,7 @@ export function useRelatorioCompras(compras, produtos, filtros = {}) {
     // Filtro por período
     if (filtros.periodo && filtros.periodo !== 'todos') {
       const hoje = new Date();
+      hoje.setHours(23, 59, 59, 999);
       let inicio = new Date();
       
       switch(filtros.periodo) {

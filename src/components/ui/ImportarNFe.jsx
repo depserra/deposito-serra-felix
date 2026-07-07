@@ -1,22 +1,32 @@
 // filepath: src/components/ui/ImportarNFe.jsx
 
 import React, { useRef, useState } from 'react';
-import { Upload, FileText, Check, AlertCircle, X, Package, Plus, RefreshCw } from 'lucide-react';
+import { Upload, FileText, Check, AlertCircle, X, RefreshCw } from 'lucide-react';
 import { useImportacaoNFe } from '../../hooks/useImportacaoNFe';
+import { useEstoque } from '../../hooks/useEstoque';
+import ModalConversaoFornecedor from './ModalConversaoFornecedor';
 
 export default function ImportarNFe({ onImportacaoConcluida }) {
   const fileInputRef = useRef(null);
   const {
     importarXML,
+    confirmarPendenciaConversao,
     importando,
     progresso,
     logImportacao,
     ultimoResultado,
+    pendenciaConversao,
     limparLog
   } = useImportacaoNFe();
 
+  const { produtos, listarProdutos } = useEstoque();
   const [arquivoSelecionado, setArquivoSelecionado] = useState(null);
   const [mostrarModal, setMostrarModal] = useState(false);
+
+  // Carregar produtos para o modal de vinculação
+  React.useEffect(() => {
+    if (mostrarModal) listarProdutos();
+  }, [mostrarModal, listarProdutos]);
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -31,10 +41,9 @@ export default function ImportarNFe({ onImportacaoConcluida }) {
 
   const handleImportar = async () => {
     if (!arquivoSelecionado) return;
-
     try {
       const resultado = await importarXML(arquivoSelecionado);
-      if (onImportacaoConcluida) {
+      if (resultado && !resultado.pendente && onImportacaoConcluida) {
         onImportacaoConcluida(resultado);
       }
     } catch (error) {
@@ -42,12 +51,28 @@ export default function ImportarNFe({ onImportacaoConcluida }) {
     }
   };
 
+  const handleConfirmarConversao = async (dados) => {
+    try {
+      const resultado = await confirmarPendenciaConversao(dados);
+      if (resultado && !resultado.pendente && onImportacaoConcluida) {
+        onImportacaoConcluida(resultado);
+      }
+    } catch (error) {
+      alert(`Erro ao processar conversão: ${error.message}`);
+    }
+  };
+
+  const handleCancelarConversao = () => {
+    limparLog();
+    setArquivoSelecionado(null);
+  };
+
   const getTipoCor = (tipo) => {
     switch (tipo) {
       case 'success': return 'text-green-600';
       case 'warning': return 'text-yellow-600';
-      case 'error': return 'text-red-600';
-      default: return 'text-blue-600';
+      case 'error':   return 'text-red-600';
+      default:        return 'text-blue-600';
     }
   };
 
@@ -55,8 +80,8 @@ export default function ImportarNFe({ onImportacaoConcluida }) {
     switch (tipo) {
       case 'success': return <Check className="w-4 h-4" />;
       case 'warning': return <AlertCircle className="w-4 h-4" />;
-      case 'error': return <AlertCircle className="w-4 h-4" />;
-      default: return <FileText className="w-4 h-4" />;
+      case 'error':   return <AlertCircle className="w-4 h-4" />;
+      default:        return <FileText className="w-4 h-4" />;
     }
   };
 
@@ -75,6 +100,7 @@ export default function ImportarNFe({ onImportacaoConcluida }) {
             </p>
           </div>
           <button
+            id="abrir-importar-nfe-btn"
             onClick={() => setMostrarModal(true)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors"
           >
@@ -93,6 +119,7 @@ export default function ImportarNFe({ onImportacaoConcluida }) {
                 Importar Nota Fiscal Eletrônica
               </h3>
               <button
+                id="fechar-importar-nfe-btn"
                 onClick={() => {
                   setMostrarModal(false);
                   limparLog();
@@ -106,7 +133,7 @@ export default function ImportarNFe({ onImportacaoConcluida }) {
 
             <div className="p-6 overflow-y-auto max-h-[60vh]">
               {/* Área de upload */}
-              {!importando && !ultimoResultado && (
+              {!importando && !ultimoResultado && !pendenciaConversao && (
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
@@ -129,18 +156,14 @@ export default function ImportarNFe({ onImportacaoConcluida }) {
               )}
 
               {/* Arquivo selecionado */}
-              {arquivoSelecionado && !importando && !ultimoResultado && (
+              {arquivoSelecionado && !importando && !ultimoResultado && !pendenciaConversao && (
                 <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4 mb-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <FileText className="w-8 h-8 text-blue-600" />
                       <div>
-                        <p className="font-medium text-slate-900 dark:text-white">
-                          {arquivoSelecionado.name}
-                        </p>
-                        <p className="text-sm text-slate-500">
-                          {(arquivoSelecionado.size / 1024).toFixed(2)} KB
-                        </p>
+                        <p className="font-medium text-slate-900 dark:text-white">{arquivoSelecionado.name}</p>
+                        <p className="text-sm text-slate-500">{(arquivoSelecionado.size / 1024).toFixed(2)} KB</p>
                       </div>
                     </div>
                     <button
@@ -151,12 +174,23 @@ export default function ImportarNFe({ onImportacaoConcluida }) {
                     </button>
                   </div>
                   <button
+                    id="iniciar-importacao-btn"
                     onClick={handleImportar}
                     className="w-full mt-4 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center justify-center gap-2"
                   >
                     <Upload className="w-5 h-5" />
                     Iniciar Importação
                   </button>
+                </div>
+              )}
+
+              {/* Mensagem de aguardando conversão */}
+              {pendenciaConversao && !importando && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-4">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    ⚠️ {pendenciaConversao.itens.length} produto(s) aguardam informação de conversão.
+                    Responda no modal para continuar.
+                  </p>
                 </div>
               )}
 
@@ -180,22 +214,12 @@ export default function ImportarNFe({ onImportacaoConcluida }) {
               {logImportacao.length > 0 && (
                 <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 max-h-64 overflow-y-auto">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-slate-700 dark:text-slate-300">
-                      Log da Importação
-                    </span>
-                    <button
-                      onClick={limparLog}
-                      className="text-sm text-blue-600 hover:text-blue-700"
-                    >
-                      Limpar
-                    </button>
+                    <span className="font-medium text-slate-700 dark:text-slate-300">Log da Importação</span>
+                    <button onClick={limparLog} className="text-sm text-blue-600 hover:text-blue-700">Limpar</button>
                   </div>
                   <div className="space-y-2">
                     {logImportacao.map((log, index) => (
-                      <div
-                        key={index}
-                        className={`flex items-start gap-2 text-sm ${getTipoCor(log.tipo)}`}
-                      >
+                      <div key={index} className={`flex items-start gap-2 text-sm ${getTipoCor(log.tipo)}`}>
                         {getIcone(log.tipo)}
                         <span>{log.mensagem}</span>
                       </div>
@@ -209,46 +233,32 @@ export default function ImportarNFe({ onImportacaoConcluida }) {
                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-4">
                     <Check className="w-6 h-6 text-green-600" />
-                    <span className="font-semibold text-green-800 dark:text-green-200">
-                      Importação Concluída!
-                    </span>
+                    <span className="font-semibold text-green-800 dark:text-green-200">Importação Concluída!</span>
                   </div>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-slate-500 dark:text-slate-400">Nota Fiscal:</span>
-                      <p className="font-medium text-slate-900 dark:text-white">
-                        {ultimoResultado.notaFiscal}
-                      </p>
+                      <p className="font-medium text-slate-900 dark:text-white">{ultimoResultado.notaFiscal}</p>
                     </div>
                     <div>
                       <span className="text-slate-500 dark:text-slate-400">Série:</span>
-                      <p className="font-medium text-slate-900 dark:text-white">
-                        {ultimoResultado.serie}
-                      </p>
+                      <p className="font-medium text-slate-900 dark:text-white">{ultimoResultado.serie}</p>
                     </div>
                     <div>
                       <span className="text-slate-500 dark:text-slate-400">Fornecedor:</span>
-                      <p className="font-medium text-slate-900 dark:text-white">
-                        {ultimoResultado.fornecedor || 'Não identificado'}
-                      </p>
+                      <p className="font-medium text-slate-900 dark:text-white">{ultimoResultado.fornecedor || 'Não identificado'}</p>
                     </div>
                     <div>
                       <span className="text-slate-500 dark:text-slate-400">Total Produtos:</span>
-                      <p className="font-medium text-slate-900 dark:text-white">
-                        {ultimoResultado.totalProdutos}
-                      </p>
+                      <p className="font-medium text-slate-900 dark:text-white">{ultimoResultado.totalProdutos}</p>
                     </div>
                     <div>
                       <span className="text-slate-500 dark:text-slate-400">Novos:</span>
-                      <p className="font-medium text-green-600">
-                        +{ultimoResultado.produtosNovos}
-                      </p>
+                      <p className="font-medium text-green-600">+{ultimoResultado.produtosNovos}</p>
                     </div>
                     <div>
                       <span className="text-slate-500 dark:text-slate-400">Atualizados:</span>
-                      <p className="font-medium text-yellow-600">
-                        ~{ultimoResultado.produtosAtualizados}
-                      </p>
+                      <p className="font-medium text-yellow-600">~{ultimoResultado.produtosAtualizados}</p>
                     </div>
                   </div>
                 </div>
@@ -259,21 +269,15 @@ export default function ImportarNFe({ onImportacaoConcluida }) {
             {ultimoResultado && (
               <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex gap-3">
                 <button
-                  onClick={() => {
-                    limparLog();
-                    setArquivoSelecionado(null);
-                  }}
+                  onClick={() => { limparLog(); setArquivoSelecionado(null); }}
                   className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center gap-2"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Importar Outro
                 </button>
                 <button
-                  onClick={() => {
-                    setMostrarModal(false);
-                    limparLog();
-                    setArquivoSelecionado(null);
-                  }}
+                  id="fechar-resultado-btn"
+                  onClick={() => { setMostrarModal(false); limparLog(); setArquivoSelecionado(null); }}
                   className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
                 >
                   Fechar
@@ -282,6 +286,16 @@ export default function ImportarNFe({ onImportacaoConcluida }) {
             )}
           </div>
         </div>
+      )}
+
+      {/* Modal de conversão — sobrepõe o modal principal */}
+      {pendenciaConversao && (
+        <ModalConversaoFornecedor
+          itens={pendenciaConversao.itens}
+          produtos={produtos}
+          onConfirmar={handleConfirmarConversao}
+          onCancelar={handleCancelarConversao}
+        />
       )}
     </>
   );

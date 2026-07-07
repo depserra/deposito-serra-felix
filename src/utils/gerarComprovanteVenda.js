@@ -505,9 +505,12 @@ async function gerarHTMLComprovante(venda, cliente, produtos = [], empresaConfig
         <span class="empresa-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg></span>
         <span>CNPJ: ${cfg.cnpj}${cfg.ie ? ' &nbsp;|&nbsp; IE: ' + cfg.ie : ''}</span>
       </div>` : ''}
-      ${cfg.endereco ? `<div class="empresa-linha">
-        <span class="empresa-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg></span>
-        <span>${cfg.endereco}<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${cfg.cidade}${cfg.cep ? ' - CEP: ' + cfg.cep : ''}</span>
+      ${cfg.endereco ? `<div class="empresa-linha" style="align-items: flex-start;">
+        <span class="empresa-icon" style="margin-top: 2px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg></span>
+        <div style="display: flex; flex-direction: column; line-height: 1.2;">
+          <span>${cfg.endereco}</span>
+          <span>${cfg.cidade}${cfg.cep ? ' - CEP: ' + cfg.cep : ''}</span>
+        </div>
       </div>` : ''}
       <div class="empresa-linha">
         <span class="empresa-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.38 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.77a16 16 0 0 0 6.29 6.29l1.62-1.62a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
@@ -684,8 +687,8 @@ export async function gerarComprovanteVenda(venda, cliente = {}, produtos = [], 
       setTimeout(() => {
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
-        // Remove o iframe após a impressão
-        setTimeout(() => iframe.remove(), 2000);
+        // Remove o iframe após a impressão (timeout maior para garantir o preview no mobile)
+        setTimeout(() => iframe.remove(), 10000);
       }, 300);
     };
   } catch (error) {

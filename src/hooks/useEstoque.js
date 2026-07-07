@@ -15,6 +15,35 @@ import {
 import { useSystem } from '../contexts/SystemContext';
 import { dbDeposito } from '../services/firebase';
 
+// Helper function to calculate Levenshtein distance between two strings
+function getLevenshteinDistance(a, b) {
+  const matrix = [];
+  let i;
+  for (i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  let j;
+  for (j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+  for (i = 1; i <= b.length; i++) {
+    for (j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          Math.min(
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          )
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
 export function useEstoque() {
   const [produtos, setProdutos] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -74,10 +103,60 @@ export function useEstoque() {
 
   const gerarCodigoCompra = () => Math.floor(10000 + Math.random() * 90000).toString();
 
-  async function adicionarProduto(dados) {
+  async function adicionarProduto(dados, ignorarSimilaridade = false) {
     try {
       setLoading(true);
-      const quantidade = parseInt(dados.quantidade) || 0;
+      const nomeLimpo = dados.nome?.trim() || '';
+      if (!nomeLimpo) {
+        throw new Error('O nome do produto é obrigatório.');
+      }
+
+      // Função de normalização rigorosa (remove acentos, espaços e caracteres especiais)
+      const normalizar = (str) => {
+        return (str || '')
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]/g, "");
+      };
+
+      const nomeNorm = normalizar(nomeLimpo);
+
+      // 1. DUPLICADO EXATO (BLOQUEAR):
+      // Verificar local (com comparação normalizada para bloquear diferenças de acentos/espaços/símbolos)
+      const duplicadoLocal = produtos.find(p => p.ativo !== false && normalizar(p.nome) === nomeNorm);
+      if (duplicadoLocal) {
+        throw new Error(`Já existe um produto cadastrado com o nome semelhante/idêntico: "${duplicadoLocal.nome}".`);
+      }
+
+      // Verificar banco
+      const q = query(col('produtos'), where('nome', '==', nomeLimpo));
+      const querySnapshot = await getDocs(q);
+      const existeBanco = querySnapshot.docs.some(doc => doc.data().ativo !== false);
+      if (existeBanco) {
+        throw new Error(`Já existe um produto cadastrado com o nome "${nomeLimpo}".`);
+      }
+
+      // 2. SIMILARIDADE (AVISO):
+      if (!ignorarSimilaridade) {
+        // Encontrar produto muito similar (ex: similaridade >= 85%)
+        const similarProd = produtos.find(p => {
+          if (p.ativo === false) return false;
+          const pNorm = normalizar(p.nome);
+          const dist = getLevenshteinDistance(nomeNorm, pNorm);
+          const maxLen = Math.max(nomeNorm.length, pNorm.length);
+          if (maxLen === 0) return false;
+          const similarity = 1 - dist / maxLen;
+          return similarity >= 0.85; // 85% de similaridade
+        });
+
+        if (similarProd) {
+          return { similar: true, produtoSimilar: similarProd };
+        }
+      }
+
+      // ✅ parseFloat preserva casas decimais (ex: 10.5 kg, 2.5 l)
+      const quantidade = parseFloat(dados.quantidade) || 0;
       const precoCompra = parseFloat(dados.precoCompra) || 0;
       const valorTotal = quantidade * precoCompra;
       
@@ -87,9 +166,16 @@ export function useEstoque() {
         codigo: dados.codigo?.trim() || '',
         descricao: dados.descricao?.trim() || '',
         quantidade,
-        estoqueMinimo: parseInt(dados.estoqueMinimo) || 0,
+        estoqueMinimo: parseFloat(dados.estoqueMinimo) || 0,
         precoCompra,
         precoVenda: parseFloat(dados.precoVenda) || 0,
+        // Campos de fracionamento (retrocompatíveis)
+        vendaFracionada: dados.vendaFracionada || false,
+        permiteFragmentacao: dados.permiteFragmentacao ?? dados.vendaFracionada ?? false,
+        fatorConversao: Number(dados.fatorConversao) || 1,
+        unidadeVenda: dados.unidadeVenda || dados.unidade || 'un',
+        precoVendaUnitario: parseFloat(dados.precoVendaUnitario) || 0,
+        incrementoMinimoVenda: parseFloat(dados.incrementoMinimoVenda) || 0,
         ativo: dados.ativo !== false,
         criadoEm: serverTimestamp(),
         atualizadoEm: serverTimestamp()
@@ -129,7 +215,9 @@ export function useEstoque() {
       setProdutos(prev => [...prev, novoProduto]);
       return novoProduto;
     } catch (err) {
-      console.error('Erro ao adicionar produto:', err);
+      if (!err.message?.includes('Já existe')) {
+        console.error('Erro ao adicionar produto:', err);
+      }
       setError(err.message);
       throw err;
     } finally {
@@ -137,16 +225,74 @@ export function useEstoque() {
     }
   }
 
-  async function atualizarProduto(id, dados) {
+  async function atualizarProduto(id, dados, ignorarSimilaridade = false) {
     try {
       setLoading(true);
+      const nomeLimpo = dados.nome?.trim() || '';
+      if (!nomeLimpo) {
+        throw new Error('O nome do produto é obrigatório.');
+      }
+
+      // Função de normalização rigorosa
+      const normalizar = (str) => {
+        return (str || '')
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]/g, "");
+      };
+
+      const nomeNorm = normalizar(nomeLimpo);
+
+      // 1. DUPLICADO EXATO (BLOQUEAR):
+      // Verificar local
+      const duplicadoLocal = produtos.find(p => p.id !== id && p.ativo !== false && normalizar(p.nome) === nomeNorm);
+      if (duplicadoLocal) {
+        throw new Error(`Já existe outro produto cadastrado com o nome semelhante/idêntico: "${duplicadoLocal.nome}".`);
+      }
+
+      // Verificar banco
+      const q = query(col('produtos'), where('nome', '==', nomeLimpo));
+      const querySnapshot = await getDocs(q);
+      const existeBanco = querySnapshot.docs.some(doc => doc.id !== id && doc.data().ativo !== false);
+      if (existeBanco) {
+        throw new Error(`Já existe outro produto cadastrado com o nome "${nomeLimpo}".`);
+      }
+
+      // 2. SIMILARIDADE (AVISO):
+      if (!ignorarSimilaridade) {
+        const similarProd = produtos.find(p => {
+          if (p.id === id || p.ativo === false) return false;
+          const pNorm = normalizar(p.nome);
+          const dist = getLevenshteinDistance(nomeNorm, pNorm);
+          const maxLen = Math.max(nomeNorm.length, pNorm.length);
+          if (maxLen === 0) return false;
+          const similarity = 1 - dist / maxLen;
+          return similarity >= 0.85; // 85% de similaridade
+        });
+
+        if (similarProd) {
+          return { similar: true, produtoSimilar: similarProd };
+        }
+      }
+
       const dadosNormalizados = {
         ...dados,
-        nome: dados.nome?.trim() || '', codigo: dados.codigo?.trim() || '',
-        descricao: dados.descricao?.trim() || '', quantidade: parseInt(dados.quantidade) || 0,
-        estoqueMinimo: parseInt(dados.estoqueMinimo) || 0,
+        nome: dados.nome?.trim() || '',
+        codigo: dados.codigo?.trim() || '',
+        descricao: dados.descricao?.trim() || '',
+        // ✅ parseFloat preserva casas decimais
+        quantidade: parseFloat(dados.quantidade) || 0,
+        estoqueMinimo: parseFloat(dados.estoqueMinimo) || 0,
         precoCompra: parseFloat(dados.precoCompra) || 0,
         precoVenda: parseFloat(dados.precoVenda) || 0,
+        // Campos de fracionamento (retrocompatíveis)
+        vendaFracionada: dados.vendaFracionada || false,
+        permiteFragmentacao: dados.permiteFragmentacao ?? dados.vendaFracionada ?? false,
+        fatorConversao: Number(dados.fatorConversao) || 1,
+        unidadeVenda: dados.unidadeVenda || dados.unidade || 'un',
+        precoVendaUnitario: parseFloat(dados.precoVendaUnitario) || 0,
+        incrementoMinimoVenda: parseFloat(dados.incrementoMinimoVenda) || 0,
         atualizadoEm: serverTimestamp()
       };
       await updateDoc(colDoc('produtos', id), dadosNormalizados);
@@ -155,7 +301,9 @@ export function useEstoque() {
       setProdutos(prev => prev.map(p => p.id === id ? produtoAtualizado : p));
       return produtoAtualizado;
     } catch (err) {
-      console.error('Erro ao atualizar produto:', err);
+      if (!err.message?.includes('Já existe')) {
+        console.error('Erro ao atualizar produto:', err);
+      }
       setError(err.message);
       throw err;
     } finally {
@@ -182,15 +330,34 @@ export function useEstoque() {
   async function ajustarEstoque(produtoId, novaQuantidade, motivo = '') {
     try {
       setLoading(true);
+      // ✅ parseFloat preserva casas decimais
+      const qtd = parseFloat(novaQuantidade);
+      if (isNaN(qtd) || qtd < 0) {
+        throw new Error('Quantidade inválida: deve ser um número maior ou igual a zero.');
+      }
+
+      // Captura saldo atual para o log de auditoria
+      const produtoAtual = produtos.find(p => p.id === produtoId);
+      const saldoAntes = produtoAtual?.quantidade ?? 0;
+
       await updateDoc(colDoc('produtos', produtoId), {
-        quantidade: parseInt(novaQuantidade), atualizadoEm: serverTimestamp()
+        quantidade: qtd,
+        atualizadoEm: serverTimestamp()
       });
-      await addDoc(col('movimentosEstoque'), {
-        produtoId, quantidade: parseInt(novaQuantidade),
-        motivo: motivo || 'Ajuste manual', tipo: 'ajuste', criadoEm: serverTimestamp()
+
+      // ✅ Collection correta: movimentacoesEstoque (era 'movimentosEstoque')
+      await addDoc(col('movimentacoesEstoque'), {
+        produtoId,
+        tipo: 'ajuste',
+        quantidade: qtd,
+        saldoAntes,
+        saldoDepois: qtd,
+        motivo: motivo || 'Ajuste manual',
+        criadoEm: serverTimestamp()
       });
+
       invalidarCache();
-      setProdutos(prev => prev.map(p => p.id === produtoId ? { ...p, quantidade: parseInt(novaQuantidade) } : p));
+      setProdutos(prev => prev.map(p => p.id === produtoId ? { ...p, quantidade: qtd } : p));
       return true;
     } catch (err) {
       console.error('Erro ao ajustar estoque:', err);

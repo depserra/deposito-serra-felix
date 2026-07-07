@@ -9,5 +9,17 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test-setup.js'],
+    include: ['src/**/*.test.{js,jsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/utils/**', 'src/hooks/**'],
+      exclude: ['src/**/*.test.*', 'src/test-setup.js']
+    }
   }
 })

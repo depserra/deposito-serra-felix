@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Search } from 'lucide-react';
+import { Plus, Trash2, Search, ArrowRight } from 'lucide-react';
 import { useEstoque } from '../../hooks/useEstoque';
+import { calcularEntradaEstoque, calcularPrecoBaseEntrada, UNIDADES } from '../../utils/conversaoUnidades';
 
 // Schema de validação
 const compraSchema = z.object({
@@ -11,12 +12,18 @@ const compraSchema = z.object({
   dataCompra: z.string().min(1, 'Data é obrigatória'),
   itens: z.array(
     z.object({
-      nomeProduto: z.string().min(1, 'Nome do produto é obrigatório'),
-      categoria: z.string().optional(),
-      unidade: z.string().min(1, 'Unidade é obrigatória'),
-      quantidade: z.coerce.number().min(0.01, 'Quantidade é obrigatória'),
-      valorCompra: z.coerce.number().min(0, 'Valor de compra é obrigatório'),
-      valorVenda: z.coerce.number().min(0, 'Valor de venda é obrigatório')
+      nomeProduto:    z.string().min(1, 'Nome do produto é obrigatório'),
+      categoria:      z.string().optional(),
+      // Unidade na qual está sendo comprada (ex: 'CX', 'SC', 'un')
+      unidadeCompra:  z.string().min(1, 'Unidade de compra é obrigatória'),
+      // Fator de conversão: qtas unidades base = 1 unidade de compra
+      fatorConversao: z.coerce.number().min(1, 'Fator deve ser ≥ 1'),
+      // Unidade base do estoque
+      unidade:        z.string().min(1, 'Unidade base é obrigatória'),
+      // Quantidade na unidade de compra (será convertida antes de gravar)
+      quantidade:     z.coerce.number().min(0.001, 'Quantidade é obrigatória'),
+      valorCompra:    z.coerce.number().min(0, 'Valor de compra é obrigatório'),
+      valorVenda:     z.coerce.number().min(0, 'Valor de venda é obrigatório')
     })
   ).min(1, 'Adicione pelo menos um item'),
   formaPagamento: z.string().optional(),
@@ -48,7 +55,16 @@ export default function CompraForm({ onSubmit, initialData }) {
     defaultValues: {
       fornecedor: '',
       dataCompra: new Date().toISOString().split('T')[0],
-      itens: [{ nomeProduto: '', categoria: '', unidade: 'un', quantidade: '', valorCompra: '', valorVenda: '' }],
+      itens: [{
+        nomeProduto:    '',
+        categoria:      '',
+        unidadeCompra:  'un',
+        fatorConversao: 1,
+        unidade:        'un',
+        quantidade:     '',
+        valorCompra:    '',
+        valorVenda:     ''
+      }],
       formaPagamento: '',
       observacoes: ''
     }
@@ -122,11 +138,14 @@ export default function CompraForm({ onSubmit, initialData }) {
 
   // Função para selecionar produto da lista
   const selecionarProduto = (index, produto) => {
-    setValue(`itens.${index}.nomeProduto`, produto.nome);
-    setValue(`itens.${index}.categoria`, produto.categoria || '');
-    setValue(`itens.${index}.unidade`, produto.unidade || 'un');
-    setValue(`itens.${index}.valorCompra`, produto.precoCompra || produto.valorCompra || '');
-    setValue(`itens.${index}.valorVenda`, produto.precoVenda || produto.valorVenda || '');
+    setValue(`itens.${index}.nomeProduto`,    produto.nome);
+    setValue(`itens.${index}.categoria`,      produto.categoria || '');
+    setValue(`itens.${index}.unidade`,        produto.unidade   || 'un');
+    setValue(`itens.${index}.valorCompra`,    produto.precoCompra || produto.valorCompra || '');
+    setValue(`itens.${index}.valorVenda`,     produto.precoVenda  || produto.valorVenda  || '');
+    // Preencher campos de conversão com o que o produto já tem cadastrado
+    setValue(`itens.${index}.unidadeCompra`,  produto.unidade || 'un'); // padrão = mesma unidade
+    setValue(`itens.${index}.fatorConversao`, Number(produto.fatorConversao) || 1);
     setProdutoSugestoes(prev => ({ ...prev, [index]: [] }));
     setInputFocado(null);
   };
@@ -153,12 +172,24 @@ export default function CompraForm({ onSubmit, initialData }) {
     const dadosProcessados = {
       ...data,
       valorTotal,
-      itens: data.itens.map(item => ({
-        ...item,
-        quantidade: parseFloat(item.quantidade),
-        valorCompra: parseFloat(item.valorCompra),
-        valorVenda: parseFloat(item.valorVenda)
-      }))
+      itens: data.itens.map(item => {
+        const fator     = Number(item.fatorConversao) || 1;
+        const qtdCompra = parseFloat(item.quantidade)  || 0;
+        // ✅ Converter para unidade base antes de gravar
+        const qtdBase   = calcularEntradaEstoque(qtdCompra, fator);
+        const precoBase = calcularPrecoBaseEntrada(parseFloat(item.valorCompra) || 0, fator);
+        return {
+          ...item,
+          // Preservar dados originais para histórico
+          quantidadeComprada: qtdCompra,
+          unidadeComprada:    item.unidadeCompra,
+          fatorConversao:     fator,
+          // Valores convertidos (o que entra no estoque)
+          quantidade:         qtdBase,
+          valorCompra:        precoBase,
+          valorVenda:         parseFloat(item.valorVenda),
+        };
+      })
     };
     await onSubmit(dadosProcessados);
   };
@@ -292,29 +323,57 @@ export default function CompraForm({ onSubmit, initialData }) {
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Unidade *
+                    Unidade de Compra *
+                  </label>
+                  <select
+                    {...register(`itens.${index}.unidadeCompra`)}
+                    className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    {Object.entries(UNIDADES).map(([sigla, { nome }]) => (
+                      <option key={sigla} value={sigla}>{sigla.toUpperCase()} — {nome}</option>
+                    ))}
+                    <option value="SC">SC — Saco</option>
+                    <option value="CX">CX — Caixa</option>
+                    <option value="FD">FD — Fardo</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Fator *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="any"
+                    {...register(`itens.${index}.fatorConversao`)}
+                    onWheel={(e) => e.target.blur()}
+                    className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="1"
+                    title="Quantidade de unidades base em 1 unidade de compra (ex: 10 para saco de 10kg)"
+                  />
+                  {errors.itens?.[index]?.fatorConversao && (
+                    <p className="mt-1 text-xs text-red-600">{errors.itens[index].fatorConversao.message}</p>
+                  )}
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Unidade Base *
                   </label>
                   <select
                     {...register(`itens.${index}.unidade`)}
                     className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
                   >
-                    <option value="un">Unidade</option>
-                    <option value="kg">Quilograma (kg)</option>
-                    <option value="g">Grama (g)</option>
-                    <option value="l">Litro (L)</option>
-                    <option value="ml">Mililitro (ml)</option>
-                    <option value="m">Metro (m)</option>
-                    <option value="m2">Metro² (m²)</option>
-                    <option value="m3">Metro³ (m³)</option>
-                    <option value="cx">Caixa</option>
-                    <option value="pct">Pacote</option>
-                    <option value="sc">Saco</option>
-                    <option value="milh">Milheiro</option>
+                    {Object.entries(UNIDADES).map(([sigla, { nome }]) => (
+                      <option key={sigla} value={sigla}>{sigla.toUpperCase()} — {nome}</option>
+                    ))}
                   </select>
                   {errors.itens?.[index]?.unidade && (
                     <p className="mt-1 text-sm text-red-600">{errors.itens[index].unidade.message}</p>
                   )}
                 </div>
+
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">

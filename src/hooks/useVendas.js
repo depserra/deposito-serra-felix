@@ -125,10 +125,37 @@ export function useVendas() {
       batch.set(vendaRef, vendaData);
 
       if (dados.itens && dados.itens.length > 0) {
+        // Carregar saldos atuais de todos os produtos envolvidos
+        const produtoIds = [...new Set(dados.itens.map(i => i.produto).filter(Boolean))];
+        const saldosAtuais = {};
+        for (const pid of produtoIds) {
+          try {
+            const { getDoc } = await import('firebase/firestore');
+            const snap = await getDoc(colDoc('produtos', pid));
+            if (snap.exists()) saldosAtuais[pid] = parseFloat(snap.data().quantidade) || 0;
+          } catch { /* produto pode não existir */ }
+        }
+
+        // ✅ Validar estoque antes de qualquer gravação
+        for (const item of dados.itens) {
+          if (!item.produto) continue;
+          const saldo = saldosAtuais[item.produto] ?? 0;
+          const qtdVendida = parseFloat(item.quantidade) || 0;
+          if (qtdVendida > saldo) {
+            const nomeProduto = item.produtoNome || item.produto;
+            throw new Error(
+              `Estoque insuficiente para "${nomeProduto}". ` +
+              `Disponível: ${saldo}, solicitado: ${qtdVendida}.`
+            );
+          }
+        }
+
         for (const item of dados.itens) {
           if (item.produto) {
             const produtoRef = colDoc('produtos', item.produto);
             const quantidadeVendida = parseFloat(item.quantidade) || 0;
+            const saldoAntes = saldosAtuais[item.produto] ?? 0;
+            const saldoDepois = saldoAntes - quantidadeVendida;
             batch.update(produtoRef, {
               quantidade: increment(-quantidadeVendida),
               updatedAt: new Date().toISOString()
@@ -138,6 +165,8 @@ export function useVendas() {
               produtoId: item.produto,
               tipo: 'saida',
               quantidade: quantidadeVendida,
+              saldoAntes,
+              saldoDepois,
               motivo: `Venda #${codigoVenda}`,
               vendaId: vendaRef.id,
               data: new Date().toISOString(),
